@@ -141,11 +141,11 @@ class SatProblemLinearQudits(SatProblem):
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
         assert False
         pass
 
-    def encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
         gate_var = layer.q2_vars[i, j, g]
         if g[0] == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, g[1], gate_var)
@@ -176,7 +176,7 @@ class SatProblemLinearQudits(SatProblem):
                     start_mat_vars[i, s, p], end_mat_vars[i, s, p], acts=[-gate_var]
                 )
 
-    def encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
         """Qubit i is unused."""
         nq = self.nq
         for s in range(nq):
@@ -185,14 +185,14 @@ class SatProblemLinearQudits(SatProblem):
                     end_mat_vars[i, s, p], start_mat_vars[i, s, p], acts=[used_var]
                 )
 
-    def fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
+    def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult):
         ok = True
         return ok
 
-    def num_qubits_in_gate(self, gate):
+    def _num_qubits_in_gate(self, gate):
         """Returns number of qubits used for this gate (supported values are 1 in 2)"""
         if isinstance(gate, tuple) and gate[0] == "CX":
             return 2

@@ -20,8 +20,8 @@ As Qiskit does not support such circuits, the output is simply printed to the sc
 import numpy as np
 from functools import partial
 
-from synthesis.synthesize import SynthesisResult, synthesize_optimal
-from synthesis.sat_problem_linear_qudits import SatProblemLinearQudits
+from .synthesize import SynthesisResult, synthesize_optimal
+from .sat_problem_linear_qudits import SatProblemLinearQudits
 
 
 def create_depth2q_problem(

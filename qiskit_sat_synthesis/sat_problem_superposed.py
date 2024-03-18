@@ -23,6 +23,7 @@ class SatProblemSuperposed(SatProblem):
 
     The circuit consists of a single Hadamard gate followed by a sequence of CX-gates.
     """
+
     def __init__(self, nq, verbosity=0):
         self.final_state = None
         self.root = None  # either a single qubit or a list of qubits
@@ -80,11 +81,11 @@ class SatProblemSuperposed(SatProblem):
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
         assert False
         pass
 
-    def encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
         gate_var = layer.q2_vars[i, j, g]
         if g == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -120,21 +121,21 @@ class SatProblemSuperposed(SatProblem):
             end_mat_vars[j], start_mat_vars[j], start_mat_vars[i], acts=[-gate_var]
         )
 
-    def encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
         """Qubit i is unused."""
         self.encoder.encode_EQ(end_mat_vars[i], start_mat_vars[i], acts=[used_var])
 
-    def fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
+    def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult):
         checked = result.circuit_with_permutations
         expected = create_unrestricted_circuit(self.final_state)
         ok = StabilizerState(checked).equiv(StabilizerState(expected))
         assert ok
         return ok
 
-    def process_solution_init_state(self, solution):
+    def _process_solution_init_state(self, solution):
         qc = QuantumCircuit(self.nq)
         for i, var in enumerate(self.init_state_vars):
             if solution[var] == 1:

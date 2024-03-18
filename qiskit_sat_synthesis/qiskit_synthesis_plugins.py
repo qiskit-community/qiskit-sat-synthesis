@@ -270,7 +270,6 @@ class SatSynthesisLinearFunctionDepth(HighLevelSynthesisPlugin):
         self, high_level_object, coupling_map=None, target=None, qubits=None, **options
     ):
         """Run synthesis for the given `LinearFunction`."""
-
         verbosity = options.get("verbosity", 0)
         min_depth2q = options.get("min_depth", 0)
         max_depth2q = options.get("max_depth2q", np.inf)

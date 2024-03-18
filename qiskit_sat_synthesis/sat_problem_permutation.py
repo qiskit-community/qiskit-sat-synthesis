@@ -64,7 +64,7 @@ class SatProblemPermutation(SatProblem):
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
         assert False
         pass
 
@@ -84,7 +84,7 @@ class SatProblemPermutation(SatProblem):
                         acts=[-perm_mat_vars[i, j]],
                     )
 
-    def encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
         gate_var = layer.q2_vars[i, j, g]
         if g == "SWAP":
             self.encode_2q_SWAP(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -106,7 +106,7 @@ class SatProblemPermutation(SatProblem):
                 end_mat_vars[j, s], start_mat_vars[i, s], acts=[-gate_var]
             )
 
-    def encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
         """Qubit i is unused."""
         nq = self.nq
         for s in range(nq):
@@ -114,10 +114,10 @@ class SatProblemPermutation(SatProblem):
                 end_mat_vars[i, s], start_mat_vars[i, s], acts=[used_var]
             )
 
-    def fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
+    def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult):
         ok = True
         if self.final_matrix is not None:
             linear_function = LinearFunction(result.circuit_with_permutations)

@@ -15,8 +15,8 @@
 import numpy as np
 from functools import partial
 
-from synthesis.synthesize import SynthesisResult, synthesize_optimal
-from synthesis.sat_problem_superposed import SatProblemSuperposed
+from .synthesize import SynthesisResult, synthesize_optimal
+from .sat_problem_superposed import SatProblemSuperposed
 
 
 def create_depth2q_problem(

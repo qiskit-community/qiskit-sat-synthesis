@@ -124,7 +124,7 @@ class SatProblemClifford(SatProblem):
         """
         return self.encoder.create_mat_with_new_vars(2 * self.nq)
 
-    def encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
         """Qubit i is unused."""
         nq = self.nq
         for s in range(2 * nq):
@@ -135,7 +135,7 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, x_old, acts=[used_var])
             self.encoder.encode_EQ(z_new, z_old, acts=[used_var])
 
-    def encode_1q_gate(self, layer, start_mat_vars, end_mat_vars, i, g):
+    def _encode_1q_gate(self, layer, start_mat_vars, end_mat_vars, i, g):
         gate_var = layer.q1_vars[i, g]
         if g == "I":
             self.encode_1q_I(start_mat_vars, end_mat_vars, i, gate_var)
@@ -224,7 +224,7 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_XOR(x_new, x_old, z_old, acts=[-gate_var])
             self.encoder.encode_EQ(z_new, z_old, acts=[-gate_var])
 
-    def encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
         gate_var = layer.q2_vars[i, j, g]
         if g == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -348,7 +348,7 @@ class SatProblemClifford(SatProblem):
                 end_mat_vars[s, j], start_mat_vars[s, i], acts=[-gate_var]
             )
 
-    def fix_returned_result(
+    def _fix_returned_result(
         self, synthesis_result: SatProblemResult
     ) -> SatProblemResult:
         """
@@ -402,7 +402,7 @@ class SatProblemClifford(SatProblem):
 
         return synthesis_result
 
-    def check_returned_result(self, synthesis_result: SatProblemResult):
+    def _check_returned_result(self, synthesis_result: SatProblemResult):
         """
         Check whether the obtained solution implements target_clifford
         """

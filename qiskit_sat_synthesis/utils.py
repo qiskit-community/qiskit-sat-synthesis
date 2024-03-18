@@ -19,7 +19,7 @@ from qiskit.circuit.library.generalized_gates import LinearFunction
 
 def make_downward(coupling_map):
     """Orders each edge (a, b) of the coupling map so that a < b,
-     and removes duplicate edges."""
+    and removes duplicate edges."""
     edges = set()
     for e in coupling_map:
         edges.add(tuple([min(e), max(e)]))
@@ -28,7 +28,7 @@ def make_downward(coupling_map):
 
 def make_upward(coupling_map):
     """Orders each edge (a, b) of the coupling map so that a > b,
-     and removes duplicate edges."""
+    and removes duplicate edges."""
     edges = set()
     for e in coupling_map:
         edges.add(tuple([max(e), min(e)]))
