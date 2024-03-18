@@ -15,10 +15,10 @@
 import numpy as np
 from functools import partial
 
-from synthesis.utils import make_downward
+from .utils import make_downward
 
-from synthesis.synthesize import SynthesisResult, synthesize_optimal
-from synthesis.sat_problem_permutation import SatProblemPermutation
+from .synthesize import SynthesisResult, synthesize_optimal
+from .sat_problem_permutation import SatProblemPermutation
 
 
 def create_depth2q_problem(
