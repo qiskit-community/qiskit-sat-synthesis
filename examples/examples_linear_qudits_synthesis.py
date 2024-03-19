@@ -31,7 +31,7 @@ def example_qutrits_lnn():
     print("")
     mat = np.array([[1, 1, 2], [0, 0, 1], [0, 2, 1]])
     result = synthesize_linear_qudits_depth(
-        mat=mat, qd=3, coupling_map=coupling_map_line_3, verbosity=1
+        qd=3, mat=mat, coupling_map=coupling_map_line_3, verbosity=1
     )
     print(result)
     print("")
@@ -45,7 +45,7 @@ def example_qutrits_full():
     print("")
     mat = np.array([[1, 1, 2], [0, 0, 1], [0, 2, 1]])
     result = synthesize_linear_qudits_depth(
-        mat=mat, qd=3, coupling_map=coupling_map_full_3, verbosity=1
+        qd=3, mat=mat, coupling_map=coupling_map_full_3, verbosity=1
     )
     print(result)
     print("")

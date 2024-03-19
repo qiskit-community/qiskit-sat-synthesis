@@ -109,5 +109,5 @@ def example_permutation_gate_plugin():
 
 if __name__ == "__main__":
     example_linear_function_plugin()
-    # example_clifford_plugin()
-    # example_permutation_gate_plugin()
+    example_clifford_plugin()
+    example_permutation_gate_plugin()

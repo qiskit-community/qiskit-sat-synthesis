@@ -75,7 +75,6 @@ class SynthesisResult:
 
 
 def synthesize_optimal(
-    target_obj,
     create_sat_problem_fn,
     min_depth=0,
     max_depth=np.inf,
@@ -95,7 +94,7 @@ def synthesize_optimal(
             print(f"Looking for solution with target depth {depth}")
 
         # Setup the problem at the current depth
-        sat_problem = create_sat_problem_fn(target_obj, depth)
+        sat_problem = create_sat_problem_fn(depth)
 
         # Solve
         problem_result = sat_problem.solve()

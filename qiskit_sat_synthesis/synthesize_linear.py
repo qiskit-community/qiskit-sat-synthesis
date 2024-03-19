@@ -24,8 +24,8 @@ from .utils import extend_identity_with_ancillas, extend_mat_with_ancillas
 
 
 def create_depth2q_problem(
-    mat,
     depth2q,
+    mat,
     main_qubits=None,
     dirty_ancilla_qubits=None,
     clean_ancilla_qubits=None,
@@ -129,8 +129,8 @@ def create_depth2q_problem(
 
 
 def create_count2q_problem(
-    mat,
     depth2q,
+    mat,
     main_qubits=None,
     dirty_ancilla_qubits=None,
     clean_ancilla_qubits=None,
@@ -232,12 +232,11 @@ def create_count2q_problem(
 
 
 # Extended version by Simon Martial that allows mid-circuit measurements
-# There is no real reason to keep the two sets of functions distinct.
 
 
 def create_depth2q_problem_with_measurements(
-    mat,
     depth2q,
+    mat,
     main_qubits=None,
     dirty_ancilla_qubits=None,
     clean_ancilla_qubits=None,
@@ -288,7 +287,7 @@ def create_depth2q_problem_with_measurements(
 
     nq = len(main_qubits) + len(dirty_ancilla_qubits) + len(clean_ancilla_qubits)
 
-    sat_problem = SatProblemLinearWithMeasurements(nq, verbosity=verbosity)
+    sat_problem = SatProblemLinear(nq, verbosity=verbosity)
     sat_problem.set_init_matrix(init_matrix)
 
     sat_problem.set_allow_layout_permutation(allow_layout_permutation)
@@ -342,8 +341,8 @@ def create_depth2q_problem_with_measurements(
 
 
 def create_count2q_problem_with_measurements(
-    mat,
     depth2q,
+    mat,
     main_qubits=None,
     dirty_ancilla_qubits=None,
     clean_ancilla_qubits=None,
@@ -481,6 +480,7 @@ def synthesize_linear_depth(
     if not allow_measurements:
         sat_problem_fn = partial(
             create_depth2q_problem,
+            mat=mat,
             main_qubits=main_qubits,
             dirty_ancilla_qubits=dirty_ancilla_qubits,
             clean_ancilla_qubits=clean_ancilla_qubits,
@@ -503,6 +503,7 @@ def synthesize_linear_depth(
     else:
         sat_problem_fn = partial(
             create_depth2q_problem_with_measurements,
+            mat=mat,
             main_qubits=main_qubits,
             dirty_ancilla_qubits=dirty_ancilla_qubits,
             clean_ancilla_qubits=clean_ancilla_qubits,
@@ -524,7 +525,6 @@ def synthesize_linear_depth(
         )
 
     res = synthesize_optimal(
-        target_obj=mat,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,
@@ -570,6 +570,7 @@ def synthesize_linear_count(
     if not allow_measurements:
         sat_problem_fn = partial(
             create_count2q_problem,
+            mat=mat,
             main_qubits=main_qubits,
             dirty_ancilla_qubits=dirty_ancilla_qubits,
             clean_ancilla_qubits=clean_ancilla_qubits,
@@ -592,6 +593,7 @@ def synthesize_linear_count(
     else:
         sat_problem_fn = partial(
             create_count2q_problem_with_measurements,
+            mat=mat,
             main_qubits=main_qubits,
             dirty_ancilla_qubits=dirty_ancilla_qubits,
             clean_ancilla_qubits=clean_ancilla_qubits,
@@ -613,7 +615,6 @@ def synthesize_linear_count(
         )
 
     res = synthesize_optimal(
-        target_obj=mat,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,

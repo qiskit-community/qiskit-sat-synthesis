@@ -23,8 +23,8 @@ from .utils import make_downward
 
 
 def create_depth2q_problem(
-    target_clifford: Clifford,
     depth2q,
+    target_clifford: Clifford,
     coupling_map=None,
     coupling_map_list=None,
     full_2q=False,
@@ -120,8 +120,8 @@ def create_depth2q_problem(
 
 
 def create_count2q_problem(
-    target_clifford: Clifford,
     depth2q,
+    target_clifford: Clifford,
     coupling_map=None,
     coupling_map_list=None,
     full_2q=False,
@@ -242,6 +242,7 @@ def synthesize_clifford_depth(
 ) -> SynthesisResult:
     sat_problem_fn = partial(
         create_depth2q_problem,
+        target_clifford=target_clifford,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
         full_2q=full_2q,
@@ -264,7 +265,6 @@ def synthesize_clifford_depth(
     )
 
     res = synthesize_optimal(
-        target_obj=target_clifford,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,
@@ -304,6 +304,7 @@ def synthesize_clifford_count(
 ) -> SynthesisResult:
     sat_problem_fn = partial(
         create_count2q_problem,
+        target_clifford=target_clifford,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
         full_2q=full_2q,
@@ -326,7 +327,6 @@ def synthesize_clifford_count(
     )
 
     res = synthesize_optimal(
-        target_obj=target_clifford,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,

@@ -25,8 +25,8 @@ from .sat_problem_linear_qudits import SatProblemLinearQudits
 
 
 def create_depth2q_problem(
-    mat,
     depth2q,
+    mat,
     qd,
     coupling_map=None,
     coupling_map_list=None,
@@ -117,6 +117,7 @@ def synthesize_linear_qudits_depth(
 
     sat_problem_fn = partial(
         create_depth2q_problem,
+        mat=mat,
         qd=qd,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
@@ -136,7 +137,6 @@ def synthesize_linear_qudits_depth(
     )
 
     res = synthesize_optimal(
-        target_obj=mat,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,

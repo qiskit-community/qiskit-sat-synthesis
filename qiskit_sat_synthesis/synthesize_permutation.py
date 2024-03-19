@@ -22,8 +22,8 @@ from .sat_problem_permutation import SatProblemPermutation
 
 
 def create_depth2q_problem(
-    mat,
     depth2q,
+    mat,
     coupling_map=None,
     coupling_map_list=None,
     full_2q=False,
@@ -102,8 +102,8 @@ def create_depth2q_problem(
 
 
 def create_count2q_problem(
-    mat,
     depth2q,
+    mat,
     coupling_map=None,
     coupling_map_list=None,
     full_2q=False,
@@ -210,6 +210,7 @@ def synthesize_permutation_depth(
 
     sat_problem_fn = partial(
         create_depth2q_problem,
+        mat=mat,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
         full_2q=full_2q,
@@ -228,7 +229,6 @@ def synthesize_permutation_depth(
     )
 
     res = synthesize_optimal(
-        target_obj=mat,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,
@@ -268,6 +268,7 @@ def synthesize_permutation_count(
         )
     sat_problem_fn = partial(
         create_count2q_problem,
+        mat=mat,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
         full_2q=full_2q,
@@ -286,7 +287,6 @@ def synthesize_permutation_count(
     )
 
     res = synthesize_optimal(
-        target_obj=mat,
         create_sat_problem_fn=sat_problem_fn,
         min_depth=min_depth2q,
         max_depth=max_depth2q,
