@@ -32,7 +32,7 @@ and then installing locally:
 pip install ./qiskit-sat-synthesis
 ```
 
-## Usage
+## Basic Usage
 
 Once installed, the ``HighLevelSynthesis`` transpiler pass in Qiskit is able to detect high-level synthesis methods
 via an entry point. The following example illustrates this basic usage:
@@ -70,6 +70,11 @@ config = HLSConfig(linear_function=[("sat_depth", {"verbosity": 1, "optimize_2q_
 qct = HighLevelSynthesis(hls_config=config, coupling_map=coupling_map, use_qubit_indices=True)(qc)
 print(qct)
 ```
+
+## More information
+
+Plesse check out the python notebook `notebooks/using-qiskit-sat-synthesis.ipunb` and various examples 
+in the `examples` directory.
 
 ## Limitations
 
