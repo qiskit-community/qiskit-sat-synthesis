@@ -16,6 +16,8 @@ from abc import abstractmethod
 
 from itertools import combinations
 
+from .sat_encoder import UnaryCounter
+
 
 class SatProblemConstraint:
     @abstractmethod
