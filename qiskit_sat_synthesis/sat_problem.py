@@ -20,7 +20,7 @@ from the solutions.
 from abc import abstractmethod
 
 from qiskit.circuit import QuantumCircuit
-from qiskit.synthesis.permutation.permutation_utils import _get_ordered_swap
+from .utils import _get_ordered_swap
 
 from .sat_encoder import SatEncoder, UnaryCounter
 from .sat_solver import SatSolver, SolverStatus
