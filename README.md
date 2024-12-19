@@ -20,16 +20,10 @@ until a solution is found.
 
 ## Installation
 
-The package is not yet available through pypi, but can be installed by cloning this repository:
+The package is available on PyPI:
 
 ```
-git clone https://github.com/qiskit-community/qiskit-sat-synthesis
-```
-
-and then installing locally:
-
-```
-pip install ./qiskit-sat-synthesis
+pip install qiskit-sat-synthesis
 ```
 
 ## Basic Usage
