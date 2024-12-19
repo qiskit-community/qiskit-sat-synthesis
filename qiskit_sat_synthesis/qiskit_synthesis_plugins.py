@@ -46,7 +46,7 @@ from qiskit.circuit.library.generalized_gates import PermutationGate, LinearFunc
 from qiskit.quantum_info import Clifford
 from qiskit.transpiler import CouplingMap
 
-from qiskit.transpiler.passes.synthesis.high_level_synthesis import (
+from qiskit.transpiler.passes.synthesis.hls_plugins import (
     HighLevelSynthesisPlugin,
 )
 

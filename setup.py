@@ -19,7 +19,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="qiskit-sat-synthesis",
-    version="0.0.1",
+    version="0.0.2",
     description="Sat-based synthesis plugins for Qiskit",
     license="Apache 2.0 License",
     author="Alexander Ivrii",
