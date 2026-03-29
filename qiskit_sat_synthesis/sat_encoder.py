@@ -349,6 +349,32 @@ class SatEncoder:
         self.encode_mat_is_permutation(mat)
         return mat
 
+    def encode_mat_product(self, nq, mat1, mat2, mat3):
+        """Given 3 nq x nq matrices of CNF variables, encode constraint that
+        mat3 = mat1 * mat2."""
+        for i in range(0, nq):
+            for j in range(0, nq):
+                c = [mat3[i, j]]
+                # c_{ij} = sum_k a_{ik} * b_{kj}
+                for k in range(0, nq):
+                    c_ijk = self.new_var()
+                    self.encode_AND(mat1[i, k], mat2[k, j], c_ijk)
+                    c.append(c_ijk)
+                self.encode_general_xor(c)
+
+    def encode_inverse_mats(self, nq, mat1, mat2):
+        """Given 2 nq x nq matrices of CNF variables, encode constraint
+        that mat2 = mat1^{-1}. Equivalently, mat1 * mat2 = Id."""
+        # optimize me to avoid create intermediate CNF variables for mat3
+        mat3 = self.create_mat_with_new_vars(nq)
+        self.encode_mat_product(nq, mat1, mat2, mat3)
+        for i in range(0, nq):
+            for j in range(0, nq):
+                if i == j:
+                    self.add_clause([mat3[i, j]])
+                else:
+                    self.add_clause([-mat3[i, j]])
+
     def block_solution(self, solution, blocking_vars=None):
         """Adds clause blocking a given solution."""
         considered_vars = (
@@ -385,6 +411,18 @@ class SatEncoder:
                     perm_pattern.append(j)
         inverse_perm_pattern = _inverse_pattern(perm_pattern)
         return inverse_perm_pattern
+
+    def get_linear_mat_from_solution(self, mat, sol):
+        """Returns linear matrix from solution."""
+        nq = len(mat)
+        linear_fn = np.empty((nq, nq))
+        perm_pattern = []
+        for i in range(nq):
+            for j in range(nq):
+                lit = mat[i, j]
+                val = sol[lit]
+                linear_fn[i, j] = val
+        return linear_fn
 
 
 class UnaryCounter:

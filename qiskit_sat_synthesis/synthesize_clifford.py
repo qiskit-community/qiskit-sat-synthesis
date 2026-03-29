@@ -27,9 +27,11 @@ def create_depth2q_problem(
     target_clifford: Clifford,
     coupling_map=None,
     coupling_map_list=None,
+    gates_2q=None,
     full_2q=False,
     allow_layout_permutation=False,
     allow_final_permutation=False,
+    allow_final_linear=False,
     state_preparation_mode=False,
     max_2q_per_layer=None,
     max_1q_per_layer=None,
@@ -62,19 +64,25 @@ def create_depth2q_problem(
 
     nq = target_clifford.num_qubits
 
+    if gates_2q is None:
+        gates_2q = ["CX"]
+
+    gates_2q_cx = gates_2q == ["CX"]
+
     sat_problem = SatProblemClifford(nq, verbosity=verbosity)
     sat_problem.set_init_matrix_to_identity(nq)
     sat_problem.set_allow_layout_permutation(allow_layout_permutation)
-    sat_problem.set_allow_final_permutation(allow_final_permutation)
+    sat_problem.set_allow_final_permutation(
+        allow_final_permutation and not allow_final_linear
+    )
+    sat_problem.set_allow_final_linear(allow_final_linear)
     sat_problem.add_layer(gates=["S", "H", "SH", "HS", "SHS"], coupling_maps=[])
 
     all_2q_layer_ids = []
 
     for _ in range(depth2q):
         new_2q_layer_id = sat_problem.add_layer(
-            gates=[
-                "CX",
-            ],
+            gates=gates_2q,
             coupling_maps=coupling_maps,
             full_2q=full_2q,
             max_num_2q_gates=max_2q_per_layer,
@@ -107,13 +115,16 @@ def create_depth2q_problem(
             layer1_id = all_2q_layer_ids[i - 1]
             layer2_id = layer1_id + 1
             layer3_id = layer2_id + 1
+
             sat_problem.add_cannot_push_2q_earlier_constraint(layer1_id, layer3_id)
             sat_problem.add_cannot_simplify_2q_1q_2q_constraint(
                 layer1_id, layer2_id, layer3_id
             )
-            sat_problem.add_commutation_2q_1q_2q_constraint(
-                layer1_id, layer2_id, layer3_id
-            )
+
+            if gates_2q_cx:
+                sat_problem.add_commutation_2q_1q_2q_constraint(
+                    layer1_id, layer2_id, layer3_id
+                )
     sat_problem.set_check_solutions(check_solutions)
     sat_problem.set_print_solutions(print_solutions)
     return sat_problem
@@ -124,9 +135,11 @@ def create_count2q_problem(
     target_clifford: Clifford,
     coupling_map=None,
     coupling_map_list=None,
+    gates_2q=None,
     full_2q=False,
     allow_layout_permutation=False,
     allow_final_permutation=False,
+    allow_final_linear=False,
     state_preparation_mode=False,
     max_2q_per_layer=None,
     max_1q_per_layer=None,
@@ -159,19 +172,25 @@ def create_count2q_problem(
 
     nq = target_clifford.num_qubits
 
+    if gates_2q is None:
+        gates_2q = ["CX"]
+
+    gates_2q_cx = gates_2q == ["CX"]
+
     sat_problem = SatProblemClifford(nq, verbosity=verbosity)
     sat_problem.set_init_matrix_to_identity(nq)
     sat_problem.set_allow_layout_permutation(allow_layout_permutation)
-    sat_problem.set_allow_final_permutation(allow_final_permutation)
+    sat_problem.set_allow_final_permutation(
+        allow_final_permutation and not allow_final_linear
+    )
+    sat_problem.set_allow_final_linear(allow_final_linear)
     sat_problem.add_layer(gates=["S", "H", "SH", "HS", "SHS"], coupling_maps=[])
 
     all_2q_layer_ids = []
 
     for _ in range(depth2q):
         new_2q_layer_id = sat_problem.add_layer(
-            gates=[
-                "CX",
-            ],
+            gates=gates_2q,
             coupling_maps=coupling_maps,
             full_2q=full_2q,
             max_num_2q_gates=1,
@@ -203,12 +222,14 @@ def create_count2q_problem(
             layer2_id = layer1_id + 1
             layer3_id = layer2_id + 1
             sat_problem.add_layers_intersect_or_ordered(layer1_id, layer3_id)
-            sat_problem.add_cannot_simplify_2q_1q_2q_constraint(
-                layer1_id, layer2_id, layer3_id
-            )
-            sat_problem.add_commutation_2q_1q_2q_count_only_constraint(
-                layer1_id, layer2_id, layer3_id
-            )
+
+            if gates_2q_cx:
+                sat_problem.add_cannot_simplify_2q_1q_2q_constraint(
+                    layer1_id, layer2_id, layer3_id
+                )
+                sat_problem.add_commutation_2q_1q_2q_count_only_constraint(
+                    layer1_id, layer2_id, layer3_id
+                )
     sat_problem.set_check_solutions(check_solutions)
     sat_problem.set_print_solutions(print_solutions)
     return sat_problem
@@ -220,9 +241,11 @@ def synthesize_clifford_depth(
     coupling_map_list=None,
     min_depth2q=0,
     max_depth2q=np.inf,
+    gates_2q=None,
     full_2q=False,
     allow_layout_permutation=False,
     allow_final_permutation=False,
+    allow_final_linear=False,
     state_preparation_mode=False,
     max_2q_per_layer=None,
     max_1q_per_layer=None,
@@ -245,9 +268,11 @@ def synthesize_clifford_depth(
         target_clifford=target_clifford,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
+        gates_2q=gates_2q,
         full_2q=full_2q,
         allow_layout_permutation=allow_layout_permutation,
         allow_final_permutation=allow_final_permutation,
+        allow_final_linear=allow_final_linear,
         state_preparation_mode=state_preparation_mode,
         max_2q_per_layer=max_2q_per_layer,
         max_1q_per_layer=max_1q_per_layer,
@@ -282,9 +307,11 @@ def synthesize_clifford_count(
     coupling_map_list=None,
     min_depth2q=0,
     max_depth2q=np.inf,
+    gates_2q=None,
     full_2q=False,
     allow_layout_permutation=False,
     allow_final_permutation=False,
+    allow_final_linear=False,
     state_preparation_mode=False,
     max_2q_per_layer=None,
     max_1q_per_layer=None,
@@ -307,9 +334,11 @@ def synthesize_clifford_count(
         target_clifford=target_clifford,
         coupling_map=coupling_map,
         coupling_map_list=coupling_map_list,
+        gates_2q=gates_2q,
         full_2q=full_2q,
         allow_layout_permutation=allow_layout_permutation,
         allow_final_permutation=allow_final_permutation,
+        allow_final_linear=allow_final_linear,
         state_preparation_mode=state_preparation_mode,
         max_2q_per_layer=max_2q_per_layer,
         max_1q_per_layer=max_1q_per_layer,

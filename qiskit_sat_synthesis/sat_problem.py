@@ -61,6 +61,7 @@ class SatProblemResult:
         self.circuit = None
         self.layout_permutation = None
         self.final_permutation = None
+        self.final_linear = None
         self.circuit_with_permutations = None
         self.num_1q = None
         self.num_2q = None
@@ -784,9 +785,9 @@ class SatProblem:
             res.circuit = qc
             res.layout_permutation = layout_permutation
             res.final_permutation = final_permutation
-            res.circuit_with_permutations = self._build_circuit_with_permutations(
-                qc, layout_permutation, final_permutation
-            )
+            # res.circuit_with_permutations = self._build_circuit_with_permutations(
+            #     qc, layout_permutation, final_permutation
+            # )
 
         elif solver_result == SolverStatus.UNSAT:
             res.is_unsat = True

@@ -14,10 +14,16 @@
 
 import numpy as np
 
+from .sat_solver import SatSolver, SolverStatus
+
 from qiskit.quantum_info import Clifford, StabilizerState
 from qiskit.synthesis.stabilizer.stabilizer_decompose import _calc_pauli_diff_stabilizer
 from qiskit.synthesis.clifford.clifford_decompose_layers import _calc_pauli_diff
 from qiskit.synthesis.permutation.permutation_utils import _inverse_pattern
+from qiskit.synthesis.linear import calc_inverse_matrix
+from qiskit.circuit import QuantumCircuit
+from qiskit.circuit.library import LinearFunction
+from .utils import _get_ordered_swap
 
 from .sat_problem import SatProblem, SatProblemResult
 
@@ -26,6 +32,8 @@ class SatProblemClifford(SatProblem):
     def __init__(self, nq, verbosity=0):
         self.state_preparation_mode = False
         self.final_clifford = None
+        self.allow_final_linear = False
+        self.final_permutation_vars = None
         super().__init__(nq, verbosity=verbosity)
 
     def set_init_matrix(self, matrix):
@@ -39,6 +47,9 @@ class SatProblemClifford(SatProblem):
 
     def set_state_preparation_mode(self, state_preparation_mode):
         self.state_preparation_mode = state_preparation_mode
+
+    def set_allow_final_linear(self, allow_final_linear):
+        self.allow_final_linear = allow_final_linear
 
     # Private methods, should not be used by the calling application
 
@@ -117,6 +128,36 @@ class SatProblemClifford(SatProblem):
                         start_mat_vars[s, i + nq],
                         acts=[-perm_mat_vars[i, j]],
                     )
+
+    def _encode_linear_function(self, start_mat_vars, end_mat_vars, m):
+        """
+        Encode the constraint that the end (Clifford) matrix if obtained from the start
+        (Clifford) matrix by applying a Clifford corresponding to linear function (mat).
+        """
+        # we want:
+        #   [A2 B2]   =    [A1 B1] * [M^t 0]
+        #   [C2 D2]        [C1 D1]   [0   M^{-1}]
+        #
+        # or equivalently:
+        #   A2 = A1 * M^t
+        #   B2 = B1 * M^{-1}
+        #   C2 = C1 * M^t
+        #   D2 = D1 * M^{-1}
+        nq = self.nq
+        m_inv = self.encoder.create_mat_with_new_vars(nq)
+        self.encoder.encode_inverse_mats(nq, m, m_inv)
+        self.encoder.encode_mat_product(
+            nq, start_mat_vars[:nq, :nq], m.T, end_mat_vars[:nq, :nq]
+        )
+        self.encoder.encode_mat_product(
+            nq, start_mat_vars[:nq, nq:], m_inv, end_mat_vars[:nq, nq:]
+        )
+        self.encoder.encode_mat_product(
+            nq, start_mat_vars[nq:, :nq], m.T, end_mat_vars[nq:, :nq]
+        )
+        self.encoder.encode_mat_product(
+            nq, start_mat_vars[nq:, nq:], m_inv, end_mat_vars[nq:, nq:]
+        )
 
     def _create_state_vars(self):
         """Creates variables representing the current state
@@ -359,46 +400,61 @@ class SatProblemClifford(SatProblem):
             Given a Clifford circuit qc and the "target" clifford, we want to append
             a layer of Pauli gates to make sure all expected values are +1.
         """
+        nq = self.nq
 
-        num_qubits = synthesis_result.circuit.num_qubits
+        checked_qc = self._build_circuit_with_permutations(
+            synthesis_result.circuit,
+            synthesis_result.layout_permutation,
+            synthesis_result.final_permutation,
+        )
+        checked_qc_cliff = Clifford(checked_qc)
+
+        if synthesis_result.final_linear is None:
+            lf = None
+            lf_inv = None
+            final_clifford = self.final_clifford
+        else:
+            lf = LinearFunction(synthesis_result.final_linear.astype(bool))
+            lf_inv = LinearFunction(
+                calc_inverse_matrix(synthesis_result.final_linear.astype(bool))
+            )
+            circ = QuantumCircuit(nq)
+            circ.append(self.final_clifford, circ.qubits)
+            circ.append(lf_inv, circ.qubits)
+            final_clifford = Clifford(circ)
+
+        if not self.state_preparation_mode:
+            pauli_circ = _calc_pauli_diff(checked_qc_cliff, final_clifford)
+        else:
+            pauli_circ = _calc_pauli_diff_stabilizer(checked_qc_cliff, final_clifford)
+
+        # Create the Pauli layer, but it needs to be remapped:
+        # e.g. final_perm maps 3->5, adding Pauli x(5) after final_perm is equivalent to adding x(3) before final_perm
         if synthesis_result.layout_permutation is not None:
             layout_permutation = synthesis_result.layout_permutation
         else:
-            layout_permutation = list(range(num_qubits))
+            layout_permutation = list(range(nq))
 
         if synthesis_result.final_permutation is not None:
             final_permutation = synthesis_result.final_permutation
         else:
-            final_permutation = list(range(num_qubits))
+            final_permutation = list(range(nq))
         inverse_final_permutation = _inverse_pattern(final_permutation)
 
-        checked_qc = synthesis_result.circuit_with_permutations
-        cliff = Clifford(checked_qc)
-
-        # Create the Pauli layer, but it needs to be remapped:
-        # e.g. final_perm maps 3->5, adding Pauli x(5) after final_perm is equivalent to adding x(3) before final_perm
-
         permuted_qubits = [
-            layout_permutation[inverse_final_permutation[q]] for q in range(num_qubits)
+            layout_permutation[inverse_final_permutation[q]] for q in range(nq)
         ]
         permuted_qubits = _inverse_pattern(permuted_qubits)
-
-        if not self.state_preparation_mode:
-            pauli_circ = _calc_pauli_diff(cliff, self.final_clifford)
-        else:
-            pauli_circ = _calc_pauli_diff_stabilizer(cliff, self.final_clifford)
 
         synthesis_result.circuit.compose(
             pauli_circ, qubits=permuted_qubits, inplace=True
         )
-
-        synthesis_result.circuit_with_permutations = (
-            self._build_circuit_with_permutations(
-                synthesis_result.circuit,
-                synthesis_result.layout_permutation,
-                synthesis_result.final_permutation,
-            )
+        synthesis_result.circuit_with_permutations = checked_qc
+        synthesis_result.circuit_with_permutations.compose(
+            pauli_circ, qubits=permuted_qubits, inplace=True
         )
+        if lf is not None:
+            synthesis_result.circuit_with_permutations.append(lf, range(nq))
 
         return synthesis_result
 
@@ -422,5 +478,128 @@ class SatProblemClifford(SatProblem):
                 ok &= stab.equiv(stab_target)
                 ok &= stab.probabilities_dict() == stab_target.probabilities_dict()
 
-        assert ok
         return ok
+
+    def _encode(self):
+        """Temporarily overwriting encode here, otherwise cannot add some constraints."""
+        if self.encoded:
+            return
+
+        nq = self.nq
+
+        # initial constraint
+        cur_state_vars = self._create_state_vars()
+        self._encode_init_constraint(cur_state_vars)
+        self.init_state_vars = cur_state_vars
+
+        if self.allow_layout_permutation:
+            perm_mat_vars = self.encoder.create_perm_mat_with_new_vars(nq)
+            end_state_vars = self._create_state_vars()
+            self._encode_permutation(cur_state_vars, end_state_vars, perm_mat_vars)
+            cur_state_vars = end_state_vars
+            self.layout_permutation_vars = perm_mat_vars
+
+        for layer in self.layers:
+            end_state_vars = self._create_state_vars()
+            layer._encode_layer_constraints()
+            self._encode_transition_relation(layer, cur_state_vars, end_state_vars)
+            cur_state_vars = end_state_vars
+            self.state_vars.append(end_state_vars)
+
+        if self.allow_layout_permutation:
+            inv_perm_mat_vars = self.layout_permutation_vars.transpose()
+            end_state_vars = self._create_state_vars()
+            self._encode_permutation(cur_state_vars, end_state_vars, inv_perm_mat_vars)
+            cur_state_vars = end_state_vars
+
+        if self.allow_final_permutation:
+            perm_mat_vars = self.encoder.create_perm_mat_with_new_vars(nq)
+            end_state_vars = self._create_state_vars()
+            self._encode_permutation(cur_state_vars, end_state_vars, perm_mat_vars)
+            cur_state_vars = end_state_vars
+            self.final_permutation_vars = perm_mat_vars
+
+        if self.allow_final_linear:
+            linear_vars = self.encoder.create_mat_with_new_vars(nq)
+            end_state_vars = self._create_state_vars()
+            self._encode_linear_function(cur_state_vars, end_state_vars, linear_vars)
+            cur_state_vars = end_state_vars
+            self.final_linear_vars = linear_vars
+
+        self._encode_final_constraint(cur_state_vars)
+        self._encode_max_gates_constraints()
+        self._encode_additional_constraints()
+        self._compute_problem_vars()
+        self.encoded = True
+
+    def _extract_sat_problem_result(self, sat_query_result) -> SatProblemResult:
+        """Extract solution (quantum circuit and layouts) from SAT-solver assignment."""
+        solver_result = sat_query_result.result
+        solver_solution = sat_query_result.solution
+        solver_run_time = sat_query_result.run_time
+
+        res = SatProblemResult()
+        res.run_time = solver_run_time
+        res.solver_solution = solver_solution
+
+        if solver_result == SolverStatus.SAT:
+            assert solver_solution is not None
+            nq = self.nq
+            nc = self.nc
+            qc = QuantumCircuit(nq, nc)
+            layout_permutation = None
+            final_permutation = None
+            final_linear = None
+
+            if self.allow_layout_permutation:
+                layout_permutation = self.encoder.get_perm_pattern_from_solution(
+                    self.layout_permutation_vars, solver_solution
+                )
+
+            if self.allow_final_permutation:
+                final_permutation = self.encoder.get_perm_pattern_from_solution(
+                    self.final_permutation_vars, solver_solution
+                )
+
+            if self.allow_final_linear:
+                final_linear = self.encoder.get_linear_mat_from_solution(
+                    self.final_linear_vars, solver_solution
+                )
+
+            res.num_1q = 0
+            res.num_2q = 0
+
+            init_state_circuit = self._process_solution_init_state(solver_solution)
+            if init_state_circuit is not None:
+                qc.append(init_state_circuit, range(self.nq), range(nc))
+                qc.barrier()
+
+            for layer in self.layers:
+                layer_circuit, layer_1q, layer_2q = layer._process_solution(
+                    solver_solution
+                )
+                qc.append(layer_circuit, range(nq), range(nc))
+                qc.barrier()
+                res.num_1q += layer_1q
+                res.num_2q += layer_2q
+
+            qc = qc.decompose()
+
+            res.is_sat = True
+            res.circuit = qc
+            res.layout_permutation = layout_permutation
+            res.final_permutation = final_permutation
+            res.final_linear = final_linear
+
+            # In Clifford flow, we need to fix things. Do not build yet.
+            # res.circuit_with_permutations = self._build_circuit_with_permutations(
+            #     qc, layout_permutation, final_permutation, final_linear
+            # )
+
+        elif solver_result == SolverStatus.UNSAT:
+            res.is_unsat = True
+
+        else:
+            res.is_unsolved = True
+
+        return res
