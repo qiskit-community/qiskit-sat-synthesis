@@ -17,10 +17,15 @@ from setuptools import setup, find_packages
 with open("requirements.txt") as f:
     REQUIREMENTS = f.read().splitlines()
 
+with open("README.md") as f:
+    README = f.read()
+
 setup(
     name="qiskit-sat-synthesis",
     version="0.0.2",
     description="Sat-based synthesis plugins for Qiskit",
+    long_description=README,
+    long_description_content_type="text/markdown",
     license="Apache 2.0 License",
     author="Alexander Ivrii",
     author_email="alexi@il.ibm.com",
