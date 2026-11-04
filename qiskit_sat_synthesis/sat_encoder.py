@@ -16,7 +16,7 @@ and provides a variety of methods to convert more general constraints to the CNF
 """
 
 import numpy as np
-from qiskit.synthesis.permutation.permutation_utils import _inverse_pattern
+from qiskit.synthesis.permutation import _inverse_pattern
 
 
 class SatEncoder:
