@@ -1,2 +1,2 @@
-qiskit>=1.2.0,<3
+qiskit>=2.5.0,<3
 z3-solver
