@@ -15,6 +15,10 @@ The SatEncoder class stores a CNF (conjunctive normal form) encoding of the prob
 and provides a variety of methods to convert more general constraints to the CNF form.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+
 import numpy as np
 from qiskit.synthesis.permutation import _inverse_pattern
 
@@ -23,54 +27,54 @@ class SatEncoder:
     """Stores a CNF encoding of the problem and provides a variety of methods
     to translate more general constraints to the CNF form."""
 
-    def __init__(self, verbosity=0):
+    def __init__(self, verbosity: int = 0) -> None:
         self.MAX_VAR = 0
-        self.CNF = []
-        self.ASSUMPTIONS = []
+        self.CNF: list[list[int]] = []
+        self.ASSUMPTIONS: list[int] = []
 
-        self.eq_hash = dict()
-        self.before_hash = dict()
+        self.eq_hash: dict[str, int] = dict()
+        self.before_hash: dict[str, int] = dict()
 
         self.verbosity = verbosity
 
-    def max_var(self):
+    def max_var(self) -> int:
         return self.MAX_VAR
 
-    def cnf(self):
+    def cnf(self) -> list[list[int]]:
         return self.CNF
 
-    def new_var(self):
+    def new_var(self) -> int:
         self.MAX_VAR = self.MAX_VAR + 1
         var = self.MAX_VAR
         return var
 
-    def add_clause(self, c, acts=[]):
+    def add_clause(self, c: list[int], acts: Sequence[int] = ()) -> None:
         assert isinstance(c, list)
         # for lit in c:
         #     assert(isinstance(lit, (int, np.int32)))
 
         if self.verbosity >= 4:
-            print(f"--adding clause {c + acts}")
-        self.CNF.append(c + acts)
+            print(f"--adding clause {c + list(acts)}")
+        self.CNF.append(c + list(acts))
 
-    def clear_assumptions(self):
+    def clear_assumptions(self) -> None:
         self.ASSUMPTIONS.clear()
 
-    def add_assumption(self, a):
+    def add_assumption(self, a: int) -> None:
         self.ASSUMPTIONS.append(a)
 
-    def negate_clause(self, c):
+    def negate_clause(self, c: list[int]) -> list[int]:
         nc = [-x for x in c]
         return nc
 
-    def print_cnf(self):
+    def print_cnf(self) -> None:
         for c in self.CNF:
             print(c)
 
-    def print_stats(self, msg):
+    def print_stats(self, msg: str) -> None:
         print(f"{msg}: #vars = {self.MAX_VAR}, #clauses = {len(self.CNF)}")
 
-    def write_cnf_to_file(self, output_file_name):
+    def write_cnf_to_file(self, output_file_name: str) -> None:
         if self.verbosity >= 1:
             print(
                 f"writing problem {output_file_name}: #vars = {self.MAX_VAR}, #clauses = {len(self.CNF)}"
@@ -86,7 +90,9 @@ class SatEncoder:
                 write_file.write(c_str)
         write_file.close()
 
-    def encode_at_most_one_naive(self, lits, acts=[]):
+    def encode_at_most_one_naive(
+        self, lits: list[int], acts: Sequence[int] = ()
+    ) -> None:
         if self.verbosity >= 3:
             print(f"Encoding at-most-one constraints on {lits} using naive method:")
         for i in range(len(lits)):
@@ -94,7 +100,9 @@ class SatEncoder:
                 if j > i:
                     self.add_clause([-lits[i], -lits[j]], acts)
 
-    def encode_at_most_one_order(self, lits, acts=[]):
+    def encode_at_most_one_order(
+        self, lits: list[int], acts: Sequence[int] = ()
+    ) -> None:
         if self.verbosity >= 3:
             print(f"Encoding at-most-one constraints on {lits} using order method:")
 
@@ -109,19 +117,19 @@ class SatEncoder:
             self.add_clause([ys[i], -lits[i]], acts)
             self.add_clause([-ys[i - 1], -lits[i]], acts)
 
-    def encode_at_most_one(self, lits, acts=[]):
+    def encode_at_most_one(self, lits: list[int], acts: Sequence[int] = ()) -> None:
         if len(lits) in [2, 3]:
             self.encode_at_most_one_naive(lits, acts)
         elif len(lits) > 3:
             self.encode_at_most_one_order(lits, acts)
 
-    def encode_exactly_one(self, lits, acts=[]):
+    def encode_exactly_one(self, lits: list[int], acts: Sequence[int] = ()) -> None:
         if self.verbosity >= 3:
             print(f"Encoding exactly-one constraints on {lits}:")
         self.add_clause(lits, acts)
         self.encode_at_most_one(lits, acts)
 
-    def encode_unary_counter(self, x, k):
+    def encode_unary_counter(self, x: list[int], k: int) -> dict[tuple[int, int], int]:
         """Creates partial sums s_{i, j} such that
             ``s_{i, j}=1`` if and only if ``x_0 + ... + x_{i} >= j+1``,
             where i = 0 .. n-1, and j = 0 .. k-1.
@@ -161,7 +169,7 @@ class SatEncoder:
 
         return s
 
-    def encode_XOR(self, a, b, c, acts=[]):
+    def encode_XOR(self, a: int, b: int, c: int, acts: Sequence[int] = ()) -> None:
         """Encodes activated constraint a XOR b XOR c == 0,
         equivalently c = a XOR b, or c = (a != b)."""
         self.add_clause([-a, b, c], acts)
@@ -169,7 +177,7 @@ class SatEncoder:
         self.add_clause([a, b, -c], acts)
         self.add_clause([-a, -b, -c], acts)
 
-    def encode_XNOR(self, a, b, c, acts=[]):
+    def encode_XNOR(self, a: int, b: int, c: int, acts: Sequence[int] = ()) -> None:
         """Encodes activated constraint a XOR b XOR c == 1,
         equivalently c = a XNOR b, or c = (a == b)."""
         self.add_clause([a, -b, -c], acts)
@@ -177,7 +185,9 @@ class SatEncoder:
         self.add_clause([-a, -b, c], acts)
         self.add_clause([a, b, c], acts)
 
-    def encode_general_xor(self, xor_clause, acts=[]):
+    def encode_general_xor(
+        self, xor_clause: list[int], acts: Sequence[int] = ()
+    ) -> None:
         """Encodes activated constraints
         (xor_clause[0] XOR ... XOR xor_clause[n-1] == 0).
         """
@@ -209,55 +219,59 @@ class SatEncoder:
             self.encode_general_xor(xor_clause_rem, acts=acts)
 
     # encode activation_lits -> (a=b)
-    def encode_EQ(self, a, b, acts=[]):
+    def encode_EQ(self, a: int, b: int, acts: Sequence[int] = ()) -> None:
         """Encode activated constraint a == b
         (equivalently, a XOR b == 0).
         """
         self.add_clause([-a, b], acts)
         self.add_clause([a, -b], acts)
 
-    def encode_smaller(self, control_vars, target_vars, acts=[]):
+    def encode_smaller(
+        self, control_vars: list[int], target_vars: list[int], acts: Sequence[int] = ()
+    ) -> None:
         for i in range(len(control_vars)):
             for j in range(len(target_vars)):
                 if i >= j:
                     self.add_clause([-control_vars[i], -target_vars[j]], acts)
 
-    def encode_OR(self, a, b, c, acts=[]):
+    def encode_OR(self, a: int, b: int, c: int, acts: Sequence[int] = ()) -> None:
         """Encodes c = a | b."""
         self.add_clause([-a, c], acts)
         self.add_clause([-b, c], acts)
         self.add_clause([a, b, -c], acts)
 
     # encode z = A[0] | ... | A[n-1]
-    def encode_EQ_OR(self, A, z):
+    def encode_EQ_OR(self, A: list[int], z: int) -> None:
         for i in range(len(A)):
             self.add_clause([-A[i], z])
         self.add_clause(A + [-z])
 
     # encode z = A[0] & ... & A[n-1]
-    def encode_EQ_AND(self, A, z):
+    def encode_EQ_AND(self, A: list[int], z: int) -> None:
         for i in range(len(A)):
             self.add_clause([A[i], -z])
         self.add_clause([-a for a in A] + [z])
 
     # encode (A[0] | ... | A[n-1] == (B[0] | ... | B[m-1])
-    def encode_OR_EQ_OR(self, A, B):
+    def encode_OR_EQ_OR(self, A: list[int], B: list[int]) -> None:
         for a in A:
             self.add_clause(B + [-a])
         for b in B:
             self.add_clause(A + [-b])
 
-    def encode_AND(self, a, b, c, acts=[]):
+    def encode_AND(self, a: int, b: int, c: int, acts: Sequence[int] = ()) -> None:
         self.add_clause([-c, a], acts)
         self.add_clause([-c, b], acts)
         self.add_clause([c, -a, -b], acts)
 
-    def encode_OR_VEC(self, A, B, C, acts=[]):
+    def encode_OR_VEC(
+        self, A: list[int], B: list[int], C: list[int], acts: Sequence[int] = ()
+    ) -> None:
         for i in range(len(A)):
             self.encode_OR(A[i], B[i], C[i], acts)
 
     # encode z = (A[0] & B[0]) | ... | (A[n] & B[n])
-    def encode_both_on_together(self, A, B):
+    def encode_both_on_together(self, A: list[int], B: list[int]) -> int:
         s = str([A, B])
 
         if s in self.eq_hash.keys():
@@ -273,7 +287,7 @@ class SatEncoder:
 
         return z
 
-    def encode_vectors_are_equal(self, A, B):
+    def encode_vectors_are_equal(self, A: list[int], B: list[int]) -> int:
         """Encodes z <-> (A == B) and returns z.
 
         That is, z <-> ((A[0] = B[0]) & ... & (A[n] = B[n]))
@@ -287,7 +301,7 @@ class SatEncoder:
         return z
 
     # encode z = A < B
-    def encode_on_before(self, A, B):
+    def encode_on_before(self, A: list[int], B: list[int]) -> int:
         s = str([A, B])
 
         if s in self.before_hash.keys():
@@ -316,7 +330,9 @@ class SatEncoder:
 
         return z
 
-    def create_mat_with_new_vars(self, nrows, ncols=None):
+    def create_mat_with_new_vars(
+        self, nrows: int, ncols: int | None = None
+    ) -> np.ndarray:
         """
         Returns a new nrows x ncols matrix with fresh CNF variables.
         If ncols is None, then returns a square matrix nrows x nrows.
@@ -328,7 +344,7 @@ class SatEncoder:
             print(f"Creating new matrix:\n {mat}")
         return mat
 
-    def encode_mat_is_permutation(self, mat):
+    def encode_mat_is_permutation(self, mat: np.ndarray) -> None:
         """Given a nq x nq matrix of CNF variables, encode constraints that it represents
         a permutation matrix."""
 
@@ -340,7 +356,7 @@ class SatEncoder:
             lits = [mat[i, j] for i in range(nq)]
             self.encode_exactly_one(lits)
 
-    def create_perm_mat_with_new_vars(self, nq):
+    def create_perm_mat_with_new_vars(self, nq: int) -> np.ndarray:
         """
         Returns a new nq x nq matrix with fresh CNF variables.
         Adds constraints that this is a permutation matrix.
@@ -349,7 +365,9 @@ class SatEncoder:
         self.encode_mat_is_permutation(mat)
         return mat
 
-    def encode_mat_product(self, nq, mat1, mat2, mat3):
+    def encode_mat_product(
+        self, nq: int, mat1: np.ndarray, mat2: np.ndarray, mat3: np.ndarray
+    ) -> None:
         """Given 3 nq x nq matrices of CNF variables, encode constraint that
         mat3 = mat1 * mat2."""
         for i in range(0, nq):
@@ -362,7 +380,7 @@ class SatEncoder:
                     c.append(c_ijk)
                 self.encode_general_xor(c)
 
-    def encode_inverse_mats(self, nq, mat1, mat2):
+    def encode_inverse_mats(self, nq: int, mat1: np.ndarray, mat2: np.ndarray) -> None:
         """Given 2 nq x nq matrices of CNF variables, encode constraint
         that mat2 = mat1^{-1}. Equivalently, mat1 * mat2 = Id."""
         # optimize me to avoid create intermediate CNF variables for mat3
@@ -375,7 +393,9 @@ class SatEncoder:
                 else:
                     self.add_clause([-mat3[i, j]])
 
-    def block_solution(self, solution, blocking_vars=None):
+    def block_solution(
+        self, solution: list[bool], blocking_vars: list[int] | None = None
+    ) -> None:
         """Adds clause blocking a given solution."""
         considered_vars = (
             list(range(1, len(solution))) if blocking_vars is None else blocking_vars
@@ -388,7 +408,7 @@ class SatEncoder:
                 blocking_clause.append(i)
         self.add_clause(blocking_clause)
 
-    def encode_at_most_k(self, lits, k):
+    def encode_at_most_k(self, lits: list[int], k: int) -> None:
         if k == 0:
             for lit in lits:
                 self.add_clause([-lit])
@@ -399,7 +419,9 @@ class SatEncoder:
             counter.extend(k + 1)
             self.add_clause([-counter.get_counter_var(k + 1)])
 
-    def get_perm_pattern_from_solution(self, perm_mat, sol):
+    def get_perm_pattern_from_solution(
+        self, perm_mat: np.ndarray, sol: list[bool]
+    ) -> list[int]:
         """Returns permutation pattern from solution."""
         nq = len(perm_mat)
         perm_pattern = []
@@ -412,7 +434,9 @@ class SatEncoder:
         inverse_perm_pattern = _inverse_pattern(perm_pattern)
         return inverse_perm_pattern
 
-    def get_linear_mat_from_solution(self, mat, sol):
+    def get_linear_mat_from_solution(
+        self, mat: np.ndarray, sol: list[bool]
+    ) -> np.ndarray:
         """Returns linear matrix from solution."""
         nq = len(mat)
         linear_fn = np.empty((nq, nq))
@@ -427,14 +451,14 @@ class SatEncoder:
 class UnaryCounter:
     """Incremental unary counter."""
 
-    def __init__(self, x, encoder):
+    def __init__(self, x: list[int], encoder: SatEncoder) -> None:
         # print(f"init with {x = }, {len(x) = }")
         self.x = x
-        self.s = {}
+        self.s: dict[tuple[int, int], int] = {}
         self.max_k_encoded = 0
         self.encoder = encoder
 
-    def extend(self, k):
+    def extend(self, k: int) -> dict[tuple[int, int], int]:
         n = len(self.x)
         k1 = self.max_k_encoded
         k2 = k
@@ -468,5 +492,5 @@ class UnaryCounter:
         self.max_k_encoded = k
         return s
 
-    def get_counter_var(self, k):
+    def get_counter_var(self, k: int) -> int | None:
         return self.s.get((len(self.x) - 1, k - 1), None)

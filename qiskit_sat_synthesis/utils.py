@@ -12,10 +12,17 @@
 
 """Various utility functions."""
 
+from __future__ import annotations
+
 import numpy as np
 
+from qiskit.transpiler import CouplingMap
 
-def make_downward(coupling_map):
+# A coupling map given either as a Qiskit CouplingMap or as a list of edges.
+CouplingMapLike = CouplingMap | list[list[int]] | list[tuple[int, int]]
+
+
+def make_downward(coupling_map: CouplingMapLike) -> list[list[int]]:
     """Orders each edge (a, b) of the coupling map so that a < b,
     and removes duplicate edges."""
     edges = set()
@@ -24,7 +31,7 @@ def make_downward(coupling_map):
     return list(list(e) for e in edges)
 
 
-def make_upward(coupling_map):
+def make_upward(coupling_map: CouplingMapLike) -> list[list[int]]:
     """Orders each edge (a, b) of the coupling map so that a > b,
     and removes duplicate edges."""
     edges = set()
@@ -33,7 +40,7 @@ def make_upward(coupling_map):
     return list(list(e) for e in edges)
 
 
-def perm_matrix(perm):
+def perm_matrix(perm: list[int]) -> np.ndarray:
     """Creates a nxn matrix corresponding to a given permutation pattern."""
     nq = len(perm)
     mat = np.zeros((nq, nq), dtype=bool)
@@ -43,8 +50,10 @@ def perm_matrix(perm):
 
 
 def extend_identity_with_ancillas(
-    main_qubits, dirty_ancilla_qubits, clean_ancilla_qubits
-):
+    main_qubits: list[int],
+    dirty_ancilla_qubits: list[int],
+    clean_ancilla_qubits: list[int],
+) -> np.ndarray:
     """
     Sets up initial matrix corresponding over given main qubits and dirty and clean
     ancilla qubits.
@@ -63,8 +72,11 @@ def extend_identity_with_ancillas(
 
 
 def extend_mat_with_ancillas(
-    mat, main_qubits, dirty_ancilla_qubits, clean_ancilla_qubits
-):
+    mat: np.ndarray,
+    main_qubits: list[int],
+    dirty_ancilla_qubits: list[int],
+    clean_ancilla_qubits: list[int],
+) -> np.ndarray:
     """
     Adjusts mat over main, dirty ancilla and clean ancilla qubits.
     """
@@ -83,13 +95,13 @@ def extend_mat_with_ancillas(
     return new_mat
 
 
-def _inverse_pattern(pattern):
+def _inverse_pattern(pattern: list[int]) -> list[int]:
     """Finds inverse of a permutation pattern."""
     b_map = {pos: idx for idx, pos in enumerate(pattern)}
     return [b_map[pos] for pos in range(len(pattern))]
 
 
-def _get_ordered_swap(permutation_in):
+def _get_ordered_swap(permutation_in: list[int]) -> list[tuple[int, int]]:
     """Sorts the input permutation by iterating through the permutation list
     and putting each element to its correct position via a SWAP (if it's not
     at the correct position already). If ``n`` is the length of the input

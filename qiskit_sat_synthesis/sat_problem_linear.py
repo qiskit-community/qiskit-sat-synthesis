@@ -12,29 +12,31 @@
 
 """Linear SAT problem."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from qiskit.circuit.library import LinearFunction
-from .sat_problem import SatProblem, SatProblemResult
+from .sat_problem import SatProblem, SatProblemLayer, SatProblemResult
 
 
 class SatProblemLinear(SatProblem):
-    def __init__(self, nq, nc=0, verbosity=0):
+    def __init__(self, nq: int, nc: int = 0, verbosity: int = 0) -> None:
         """nq must be the total number of qubits,"""
-        self.init_matrix = None
-        self.final_matrix = None
+        self.init_matrix: np.ndarray | None = None
+        self.final_matrix: np.ndarray | None = None
         super().__init__(nq, nc=nc, verbosity=verbosity)
 
-    def set_init_matrix(self, matrix):
+    def set_init_matrix(self, matrix: np.ndarray) -> None:
         self.init_matrix = matrix
 
-    def set_init_matrix_to_identity(self, nq):
+    def set_init_matrix_to_identity(self, nq: int) -> None:
         self.init_matrix = np.eye(nq)
 
-    def set_final_matrix(self, matrix):
+    def set_final_matrix(self, matrix: np.ndarray) -> None:
         self.final_matrix = matrix
 
-    def _encode_init_constraint(self, matrix_vars):
+    def _encode_init_constraint(self, matrix_vars: np.ndarray) -> None:
         """Encode constraints on the initial matrix."""
         if self.init_matrix is not None:
             for i in range(self.nq):
@@ -44,7 +46,7 @@ class SatProblemLinear(SatProblem):
                     elif self.init_matrix[i, j] == 0:
                         self.encoder.add_clause([-matrix_vars[i, j]])
 
-    def _encode_final_constraint(self, matrix_vars):
+    def _encode_final_constraint(self, matrix_vars: np.ndarray) -> None:
         """Encode the constraint that matrix_vars are equal to self.final_matrix."""
         if self.final_matrix is not None:
             for i in range(self.nq):
@@ -54,7 +56,12 @@ class SatProblemLinear(SatProblem):
                     elif self.final_matrix[i, j] == 0:
                         self.encoder.add_clause([-matrix_vars[i, j]])
 
-    def _encode_permutation(self, start_mat_vars, end_mat_vars, perm_mat_vars):
+    def _encode_permutation(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        perm_mat_vars: np.ndarray,
+    ) -> None:
         """
         Encode the constraint that the end matrix is obtained by applying a permutation
         to the start matrix. Here, start_mat_vars and end_mat_vars are n x n, and
@@ -70,15 +77,22 @@ class SatProblemLinear(SatProblem):
                         acts=[-perm_mat_vars[i, j]],
                     )
 
-    def _create_state_vars(self):
+    def _create_state_vars(self) -> np.ndarray:
         return self.encoder.create_mat_with_new_vars(self.nq)
 
-    def _compute_problem_vars(self):
+    def _compute_problem_vars(self) -> None:
         """Compute the list of main CNF variables that define the solution."""
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def _encode_1q_gate(self, layer, start_mat_vars, end_mat_vars, i, g):
+    def _encode_1q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        g: str,
+    ) -> None:
         gate_var = layer.q1_vars[(i, g)]
 
         if g == "MEASUREMENT":
@@ -87,12 +101,22 @@ class SatProblemLinear(SatProblem):
         else:
             assert False
 
-    def encode_measurement(self, end_mat_vars, qbit, gate_var):
+    def encode_measurement(
+        self, end_mat_vars: np.ndarray, qbit: int, gate_var: int
+    ) -> None:
         """Measurement on qbit i simply forces the ith row to all 0s"""
         for j in range(self.nq):
             self.encoder.add_clause([-end_mat_vars[qbit, j]], acts=[-gate_var])
 
-    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        g: str,
+    ) -> None:
         gate_var = layer.q2_vars[i, j, g]
         if g == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -103,7 +127,14 @@ class SatProblemLinear(SatProblem):
         else:
             assert False
 
-    def encode_2q_CX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_CX(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying CX(i, j))
         """
@@ -121,7 +152,14 @@ class SatProblemLinear(SatProblem):
                 acts=[-gate_var],
             )
 
-    def encode_2q_SWAP(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_SWAP(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying SWAP(i, j))
         """
@@ -136,7 +174,14 @@ class SatProblemLinear(SatProblem):
                 end_mat_vars[j, s], start_mat_vars[i, s], acts=[-gate_var]
             )
 
-    def encode_2q_DCX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_DCX(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying DCX(i, j))
         """
@@ -154,7 +199,14 @@ class SatProblemLinear(SatProblem):
                 acts=[-gate_var],
             )
 
-    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        used_var: int,
+    ) -> None:
         """Qubit i is unused."""
         nq = self.nq
         for s in range(nq):
@@ -165,7 +217,7 @@ class SatProblemLinear(SatProblem):
     def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def _check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult) -> bool:
         # TODO: fix this for supporting clean ancillas
         ok = True
         if self.final_matrix is not None:

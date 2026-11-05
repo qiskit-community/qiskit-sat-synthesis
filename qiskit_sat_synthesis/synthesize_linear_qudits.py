@@ -16,32 +16,35 @@ Synthesis of linear circuits with qudits.
 As Qiskit does not support such circuits, the output is simply printed to the screen.
 """
 
+from __future__ import annotations
+
 import numpy as np
 from functools import partial
 
 from .synthesize import SynthesisResult, synthesize_optimal
+from .utils import CouplingMapLike
 from .sat_problem_linear_qudits import SatProblemLinearQudits
 
 
 def create_depth2q_problem(
-    depth2q,
-    mat,
-    qd,
-    coupling_map=None,
-    coupling_map_list=None,
-    full_2q=False,
-    allow_layout_permutation=False,
-    allow_final_permutation=False,
-    max_2q_per_layer=None,
-    max_num_2q_gates=None,
-    max_num_unique_layers=None,
-    restrict_search_space=False,
-    optimize_2q_gates=False,
-    verbosity=1,
-    check_solutions=False,
-    print_solutions=False,
-    timeout_per_call=None,
-    max_conflicts_per_call=None,
+    depth2q: int,
+    mat: np.ndarray,
+    qd: int,
+    coupling_map: CouplingMapLike | None = None,
+    coupling_map_list: list[CouplingMapLike] | None = None,
+    full_2q: bool = False,
+    allow_layout_permutation: bool = False,
+    allow_final_permutation: bool = False,
+    max_2q_per_layer: int | None = None,
+    max_num_2q_gates: int | None = None,
+    max_num_unique_layers: int | None = None,
+    restrict_search_space: bool = False,
+    optimize_2q_gates: bool = False,
+    verbosity: int = 1,
+    check_solutions: bool = False,
+    print_solutions: bool = False,
+    timeout_per_call: int | None = None,
+    max_conflicts_per_call: int | None = None,
 ) -> SatProblemLinearQudits:
     """
     Finds depth2q-optimal.
@@ -87,27 +90,27 @@ def create_depth2q_problem(
 
 
 def synthesize_linear_qudits_depth(
-    mat,
-    qd,
-    coupling_map=None,
-    coupling_map_list=None,
-    min_depth2q=0,
-    max_depth2q=np.inf,
-    full_2q=False,
-    allow_layout_permutation=False,
-    allow_final_permutation=False,
-    max_2q_per_layer=None,
-    max_num_2q_gates=None,
-    max_num_unique_layers=None,
-    optimize_2q_gates=False,
-    check_solutions=False,
-    print_solutions=False,
-    max_solutions=1,
-    restrict_search_space=True,
-    timeout_per_call=None,
-    max_conflicts_per_call=None,
-    max_unsolved_depths=0,
-    verbosity=1,
+    mat: np.ndarray,
+    qd: int,
+    coupling_map: CouplingMapLike | None = None,
+    coupling_map_list: list[CouplingMapLike] | None = None,
+    min_depth2q: int = 0,
+    max_depth2q: int | float = np.inf,
+    full_2q: bool = False,
+    allow_layout_permutation: bool = False,
+    allow_final_permutation: bool = False,
+    max_2q_per_layer: int | None = None,
+    max_num_2q_gates: int | None = None,
+    max_num_unique_layers: int | None = None,
+    optimize_2q_gates: bool = False,
+    check_solutions: bool = False,
+    print_solutions: bool = False,
+    max_solutions: int = 1,
+    restrict_search_space: bool = True,
+    timeout_per_call: int | None = None,
+    max_conflicts_per_call: int | None = None,
+    max_unsolved_depths: int = 0,
+    verbosity: int = 1,
 ) -> SynthesisResult:
     if verbosity >= 1:
         print(

@@ -17,14 +17,19 @@ solving them using a SAT-solver, and constructing circuits
 from the solutions.
 """
 
-from abc import abstractmethod
+from __future__ import annotations
 
+from abc import abstractmethod
+from typing import Any
+
+import numpy as np
 from qiskit.circuit import QuantumCircuit
-from .utils import _get_ordered_swap
+from .utils import _get_ordered_swap, CouplingMapLike
 
 from .sat_encoder import SatEncoder, UnaryCounter
-from .sat_solver import SatSolver, SolverStatus
+from .sat_solver import SatSolver, SatSolverResult, SolverStatus
 from .sat_problem_constraints import (
+    SatProblemConstraint,
     SatLayersIntersectOrOrderedConstraint,
     SatLayerNonEmptyConstraint,
     SatNonOverlapping2qConstraint,
@@ -50,24 +55,24 @@ class SatProblemResult:
     This class represents the result of solving a given sat problem.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_sat = False
         self.is_unsat = False
         self.is_unsolved = False
 
         # in case of a solution:
-        self.solver_solution = None
-        self.circuit = None
-        self.layout_permutation = None
-        self.final_permutation = None
-        self.final_linear = None
-        self.circuit_with_permutations = None
-        self.num_1q = None
-        self.num_2q = None
+        self.solver_solution: list[bool] | None = None
+        self.circuit: QuantumCircuit | None = None
+        self.layout_permutation: list[int] | None = None
+        self.final_permutation: list[int] | None = None
+        self.final_linear: np.ndarray | None = None
+        self.circuit_with_permutations: QuantumCircuit | None = None
+        self.num_1q: int | None = None
+        self.num_2q: int | None = None
 
-        self.run_time = 0
+        self.run_time: float = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.is_sat:
             out = (
                 "found solution in "
@@ -90,13 +95,13 @@ class SatProblemLayer:
 
     def __init__(
         self,
-        sat_problem,
-        gates,
-        coupling_maps,
-        max_num_1q_gates=None,
-        max_num_2q_gates=None,
-        full_2q=False,
-    ):
+        sat_problem: SatProblem,
+        gates: list[str],
+        coupling_maps: list[CouplingMapLike],
+        max_num_1q_gates: int | None = None,
+        max_num_2q_gates: int | None = None,
+        full_2q: bool = False,
+    ) -> None:
         """
         Args:
           sat_problem: the sat problem containing this layer
@@ -116,10 +121,10 @@ class SatProblemLayer:
         self.nc = sat_problem.nc
 
         # List of 1-qubit gates allowed in this layer
-        self.gates_1q = []
+        self.gates_1q: list[str] = []
 
         # List of 2-qubit gates allowed in this layer
-        self.gates_2q = []
+        self.gates_2q: list[str] = []
 
         for gate in gates:
             gate_nq = self.sat_problem._num_qubits_in_gate(gate)
@@ -150,27 +155,27 @@ class SatProblemLayer:
 
         # q1_vars[i, g] is a CNF variable, which is true iff the layer contains
         # the 1-qubit gate g on qubit i
-        self.q1_vars = {}
+        self.q1_vars: dict[tuple[int, str], int] = {}
 
         # q2_vars[i, j, g] is a CNF variable, which is true iff the layer contains
         # the 2-qubit gate g with control i and target j
-        self.q2_vars = {}
+        self.q2_vars: dict[tuple[int, int, str], int] = {}
 
         # q_used_vars[i] is a CNF variable, which is true iff qubit i is used
         # in some 1-qubit or 2-qubit gate.
-        self.q_used_vars = {}
+        self.q_used_vars: dict[int, int] = {}
 
         # connection_vars[i, j] is a CNF variable, which is true iff qubits i and j are
         # connected by a gate (i.e. there is a gate from qubit i to qubit j, or a gate from
         # qubit j to qubit i). Only pairs (i, j) for i < j are used.
         # This is optional, the value of None means that it has not been computed.
-        self.connection_vars = None
+        self.connection_vars: dict[tuple[int, int], int] | None = None
 
         # in case there are multiple coupling maps, cmap_used_vars determine the
         # coupling map actually used in this layer
-        self.cmap_used_vars = {}
+        self.cmap_used_vars: list[int] = []
 
-    def is_connected(self, i, j):
+    def is_connected(self, i: int, j: int) -> bool:
         """Returns True if [i, j] is in one of the coupling maps."""
         for cmap in self.coupling_maps:
             if [i, j] in cmap:
@@ -179,7 +184,7 @@ class SatProblemLayer:
                 return True
         return False
 
-    def is_connected_k(self, i, j, k):
+    def is_connected_k(self, i: int, j: int, k: int) -> bool:
         """Returns True if [i, j] is in kth coupling map."""
         if [i, j] in self.coupling_maps[k]:
             return True
@@ -187,13 +192,13 @@ class SatProblemLayer:
             return True
         return False
 
-    def _get_connection_var(self, i, j):
+    def _get_connection_var(self, i: int, j: int) -> int | None:
         """Returns connection_vars[i, j] when created."""
         if not self.connection_vars:
             return None
         return self.connection_vars.get((i, j), None)
 
-    def _encode_connection_vars(self):
+    def _encode_connection_vars(self) -> None:
         """Encodes connection_vars logic."""
         if self.connection_vars is not None:
             return
@@ -217,7 +222,9 @@ class SatProblemLayer:
                         self.sat_problem.encoder.encode_EQ_OR(var_list, new_var)
                         self.connection_vars[i, j] = new_var
 
-    def _process_solution(self, solution):
+    def _process_solution(
+        self, solution: list[bool]
+    ) -> tuple[QuantumCircuit, int, int]:
         """
         Retrieves the quantum circuit for this layer from sat-solver's solution.
         """
@@ -283,7 +290,7 @@ class SatProblemLayer:
                                 ), f"Cannot reconstruct quantum circuit from gate {g}."
         return qc, num_1q, num_2q
 
-    def _encode_coupling_map_constraints(self):
+    def _encode_coupling_map_constraints(self) -> None:
         """
         Adding constraints to support multiple coupling maps or fully connected layers.
         """
@@ -294,8 +301,7 @@ class SatProblemLayer:
 
         # Introduce cmaps_used_vars when there is more than 1 coupling map
         if num_cmaps > 1:
-            for i in range(num_cmaps):
-                self.cmap_used_vars[i] = encoder.new_var()
+            self.cmap_used_vars = [encoder.new_var() for _ in range(num_cmaps)]
 
         if num_cmaps > 1:
             for i in range(self.nq):
@@ -336,7 +342,7 @@ class SatProblemLayer:
                             # print(f"{i = }, {j = }, {k = }, {clause = }, {self.cmap_used_vars = }, {self.q2_vars = }")
                             encoder.add_clause(clause)
 
-    def _encode_layer_constraints(self):
+    def _encode_layer_constraints(self) -> None:
 
         encoder = self.sat_problem.encoder
 
@@ -412,33 +418,33 @@ class SatProblem:
     by appending layers and constraints, and solving.
     """
 
-    def __init__(self, nq, nc=0, verbosity=0):
+    def __init__(self, nq: int, nc: int = 0, verbosity: int = 0) -> None:
         self.nq = nq  # number of qubits
         self.nc = nc  # number of classical bits
 
         self.init_state = None
-        self.layers = []
+        self.layers: list[SatProblemLayer] = []
 
         self.encoder = SatEncoder(verbosity=verbosity)
 
         # to do : combine these into a single array
-        self.init_state_vars = None
-        self.state_vars = []
+        self.init_state_vars: Any = None
+        self.state_vars: list[Any] = []
 
         # list of problem variables that define a solution
-        self.problem_vars = []
+        self.problem_vars: list[int] = []
 
         # layout and final permutations
         self.allow_layout_permutation = False
         self.allow_final_permutation = False
-        self.layout_permutation_vars = None
-        self.final_permutation_vars = None
+        self.layout_permutation_vars: np.ndarray | None = None
+        self.final_permutation_vars: np.ndarray | None = None
 
         # additional constraints
-        self.additional_constraints = []
+        self.additional_constraints: list[SatProblemConstraint] = []
 
         # Z3-solver
-        self.solver = None
+        self.solver: SatSolver | None = None
 
         # keep track of whether the formula has been encoded
         self.encoded = False
@@ -447,12 +453,12 @@ class SatProblem:
         self.verbosity = verbosity
 
         # supporting constraints on total number of 2q and 1q gates
-        self.max_num_1q_gates = None
-        self.max_num_2q_gates = None
-        self.gates_1q_counter = None
-        self.gates_2q_counter = None
+        self.max_num_1q_gates: int | None = None
+        self.max_num_2q_gates: int | None = None
+        self.gates_1q_counter: UnaryCounter | None = None
+        self.gates_2q_counter: UnaryCounter | None = None
 
-        self.last_result = None
+        self.last_result: SatProblemResult | None = None
 
         self.optimize_2q_gates = False
         self.optimize_1q_gates = False
@@ -460,50 +466,50 @@ class SatProblem:
         self.check_solutions = False
         self.print_solutions = False
 
-        self.max_conflicts_per_call = None
-        self.timeout_per_call = None
+        self.max_conflicts_per_call: int | None = None
+        self.timeout_per_call: int | None = None
 
     # option setters
 
-    def set_check_solutions(self, check_solutions):
+    def set_check_solutions(self, check_solutions: bool) -> None:
         self.check_solutions = check_solutions
 
-    def set_print_solutions(self, print_solutions):
+    def set_print_solutions(self, print_solutions: bool) -> None:
         self.print_solutions = print_solutions
 
-    def set_allow_layout_permutation(self, allow_layout_permutation):
+    def set_allow_layout_permutation(self, allow_layout_permutation: bool) -> None:
         self.allow_layout_permutation = allow_layout_permutation
 
-    def set_allow_final_permutation(self, allow_final_permutation):
+    def set_allow_final_permutation(self, allow_final_permutation: bool) -> None:
         self.allow_final_permutation = allow_final_permutation
 
-    def set_max_conflicts_per_call(self, max_conflicts_per_call):
+    def set_max_conflicts_per_call(self, max_conflicts_per_call: int | None) -> None:
         self.max_conflicts_per_call = max_conflicts_per_call
 
-    def set_timeout_per_call(self, timeout_per_call):
+    def set_timeout_per_call(self, timeout_per_call: int | None) -> None:
         self.timeout_per_call = timeout_per_call
 
-    def set_max_num_1q_gates(self, max_num_1q_gates):
+    def set_max_num_1q_gates(self, max_num_1q_gates: int | None) -> None:
         self.max_num_1q_gates = max_num_1q_gates
 
-    def set_max_num_2q_gates(self, max_num_2q_gates):
+    def set_max_num_2q_gates(self, max_num_2q_gates: int | None) -> None:
         self.max_num_2q_gates = max_num_2q_gates
 
-    def set_optimize_2q_gate(self, optimize_2q_gates):
+    def set_optimize_2q_gate(self, optimize_2q_gates: bool) -> None:
         self.optimize_2q_gates = optimize_2q_gates
 
-    def set_optimize_1q_gate(self, optimize_1q_gates):
+    def set_optimize_1q_gate(self, optimize_1q_gates: bool) -> None:
         self.optimize_1q_gates = optimize_1q_gates
 
     # creating problem
 
     def add_layer(
         self,
-        gates,
-        coupling_maps,
-        full_2q=False,
-        max_num_1q_gates=None,
-        max_num_2q_gates=None,
+        gates: list[str],
+        coupling_maps: list[CouplingMapLike],
+        full_2q: bool = False,
+        max_num_1q_gates: int | None = None,
+        max_num_2q_gates: int | None = None,
     ) -> int:
         layer = SatProblemLayer(
             self,
@@ -516,7 +522,7 @@ class SatProblem:
         self.layers.append(layer)
         return len(self.layers) - 1
 
-    def fix_1q_gate_in_layer(self, layer_id, i, g):
+    def fix_1q_gate_in_layer(self, layer_id: int, i: int, g: str) -> None:
         """Add the constraint that we have the 1-q gate g on qubit i in the given layer."""
         layer = self.layers[layer_id]
         assert (
@@ -524,7 +530,7 @@ class SatProblem:
         ), f"Gate {g} is not in the list of gates allowed in layer {layer_id}."
         self.encoder.add_clause([layer.q1_vars[i, g]])
 
-    def exclude_1q_gate_in_layer(self, layer_id, i, g):
+    def exclude_1q_gate_in_layer(self, layer_id: int, i: int, g: str) -> None:
         """Add the constraint that we do not have the 1-q gate g on qubit i in the given layer."""
         layer = self.layers[layer_id]
         assert (
@@ -532,7 +538,7 @@ class SatProblem:
         ), f"Gate {g} is not in the list of gates allowed in layer {layer_id}."
         self.encoder.add_clause([-layer.q1_vars[i, g]])
 
-    def fix_2q_gate_in_layer(self, layer_id, i, j, g):
+    def fix_2q_gate_in_layer(self, layer_id: int, i: int, j: int, g: str) -> None:
         """Add the constraint that we have the 2-q gate g on qubits i,j in the given layer."""
         layer = self.layers[layer_id]
         assert (
@@ -543,7 +549,7 @@ class SatProblem:
         ), f"Qubits {i} and {j} are not connected in layer {layer_id}."
         self.encoder.add_clause([layer.q2_vars[i, j, g]])
 
-    def exclude_2q_gate_in_layer(self, layer_id, i, j, g):
+    def exclude_2q_gate_in_layer(self, layer_id: int, i: int, j: int, g: str) -> None:
         """Add the constraint that we cannot have the 2-q gate g on qubits i,j in the given layer."""
         layer = self.layers[layer_id]
         assert (
@@ -556,57 +562,67 @@ class SatProblem:
 
     # additional constraints
 
-    def add_1q_only_after_2q_constraint(self, layer2q_id, layer1q_id):
+    def add_1q_only_after_2q_constraint(self, layer2q_id: int, layer1q_id: int) -> None:
         self.additional_constraints.append(
             Sat1QOnlyAfter2QConstraint(layer2q_id, layer1q_id)
         )
 
-    def add_nonempty_constraint(self, layer_id):
+    def add_nonempty_constraint(self, layer_id: int) -> None:
         self.additional_constraints.append(SatLayerNonEmptyConstraint(layer_id))
 
-    def add_max_unique_layers_constraint(self, layer_ids, max_unique):
+    def add_max_unique_layers_constraint(
+        self, layer_ids: list[int], max_unique: int
+    ) -> None:
         self.additional_constraints.append(
             SatMaxUnique2QLayersConstraint(layer_ids, max_unique)
         )
 
-    def add_cannot_push_2q_earlier_constraint(self, prev_layer_id, next_layer_id):
+    def add_cannot_push_2q_earlier_constraint(
+        self, prev_layer_id: int, next_layer_id: int
+    ) -> None:
         self.additional_constraints.append(
             SatCannotPush2QEarlierConstraint(prev_layer_id, next_layer_id)
         )
 
-    def add_layers_intersect_or_ordered(self, layer1_id, layer2_id):
+    def add_layers_intersect_or_ordered(self, layer1_id: int, layer2_id: int) -> None:
         self.additional_constraints.append(
             SatLayersIntersectOrOrderedConstraint(layer1_id, layer2_id)
         )
 
-    def add_cannot_simplify_2q_2q_constraint(self, layer1_id, layer2_id):
+    def add_cannot_simplify_2q_2q_constraint(
+        self, layer1_id: int, layer2_id: int
+    ) -> None:
         self.additional_constraints.append(
             SatCannotSimplify2Q2QConstraint(layer1_id, layer2_id)
         )
 
-    def add_cannot_simplify_2q_1q_2q_constraint(self, layer1, layer2, layer3):
+    def add_cannot_simplify_2q_1q_2q_constraint(
+        self, layer1: int, layer2: int, layer3: int
+    ) -> None:
         self.additional_constraints.append(
             SatCannotSimplify2Q1Q2QConstraint(layer1, layer2, layer3)
         )
 
-    def add_commutation_2q_2q_constraint(self, layer1_id, layer2_id):
+    def add_commutation_2q_2q_constraint(self, layer1_id: int, layer2_id: int) -> None:
         self.additional_constraints.append(
             SatCommutation2Q2QConstraint(layer1_id, layer2_id)
         )
 
-    def add_commutation_2q_1q_2q_constraint(self, layer1_id, layer2_id, layer3_id):
+    def add_commutation_2q_1q_2q_constraint(
+        self, layer1_id: int, layer2_id: int, layer3_id: int
+    ) -> None:
         self.additional_constraints.append(
             SatCommutation2Q1Q2QConstraint(layer1_id, layer2_id, layer3_id)
         )
 
     def add_commutation_2q_1q_2q_count_only_constraint(
-        self, layer1_id, layer2_id, layer3_id
-    ):
+        self, layer1_id: int, layer2_id: int, layer3_id: int
+    ) -> None:
         self.additional_constraints.append(
             SatCommutation2Q1Q2QForCountOnlyConstraint(layer1_id, layer2_id, layer3_id)
         )
 
-    def add_nonoverlapping_2q_constraint(self, layer_id):
+    def add_nonoverlapping_2q_constraint(self, layer_id: int) -> None:
         self.additional_constraints.append(SatNonOverlapping2qConstraint(layer_id))
 
     # solving
@@ -674,7 +690,9 @@ class SatProblem:
 
     # internal methods
 
-    def _extend_max_gates_counters(self, max_num_1q_gates, max_num_2q_gates):
+    def _extend_max_gates_counters(
+        self, max_num_1q_gates: int | None, max_num_2q_gates: int | None
+    ) -> None:
         if max_num_1q_gates is not None:
             if self.gates_1q_counter is None:
                 # create a list of all 1-qubit gates
@@ -695,7 +713,7 @@ class SatProblem:
 
             self.gates_2q_counter.extend(max_num_2q_gates + 1)
 
-    def _encode_max_gates_constraints(self):
+    def _encode_max_gates_constraints(self) -> None:
         self._extend_max_gates_counters(self.max_num_1q_gates, self.max_num_2q_gates)
 
         if self.max_num_1q_gates is not None:
@@ -712,7 +730,9 @@ class SatProblem:
             if counter_var is not None:
                 self.encoder.add_clause([-counter_var])
 
-    def _restrict_max_gates(self, max_num_1q_gates, max_num_2q_gates):
+    def _restrict_max_gates(
+        self, max_num_1q_gates: int | None, max_num_2q_gates: int | None
+    ) -> None:
         self._extend_max_gates_counters(max_num_1q_gates, max_num_2q_gates)
 
         if max_num_1q_gates is not None:
@@ -725,7 +745,7 @@ class SatProblem:
             if counter_var is not None:
                 self.encoder.add_assumption(-counter_var)
 
-    def _compute_problem_vars(self):
+    def _compute_problem_vars(self) -> None:
         """Compute the list of main CNF variables that define the solution."""
         for layer in self.layers:
             self.problem_vars.extend(layer.q1_vars.values())
@@ -733,7 +753,9 @@ class SatProblem:
         # self.problem_vars.extend(self.layout_permutation_vars)
         # self.problem_vars.extend(self.final_permutation_vars)
 
-    def _extract_sat_problem_result(self, sat_query_result) -> SatProblemResult:
+    def _extract_sat_problem_result(
+        self, sat_query_result: SatSolverResult
+    ) -> SatProblemResult:
         """Extract solution (quantum circuit and layouts) from SAT-solver assignment."""
         solver_result = sat_query_result.result
         solver_solution = sat_query_result.solution
@@ -797,8 +819,11 @@ class SatProblem:
         return res
 
     def _build_circuit_with_permutations(
-        self, qc, layout_permutation, final_permutation
-    ):
+        self,
+        qc: QuantumCircuit,
+        layout_permutation: list[int] | None,
+        final_permutation: list[int] | None,
+    ) -> QuantumCircuit:
         """Creates a FULL circuit from synthesized circuit by explicitly appending permutations onto it."""
 
         if layout_permutation is None and final_permutation is None:
@@ -830,7 +855,9 @@ class SatProblem:
 
         return checked_qc
 
-    def _optimize_num_2q_gates(self, max_num_1q_gates):
+    def _optimize_num_2q_gates(
+        self, max_num_1q_gates: int | None
+    ) -> SatProblemResult | None:
         if self.last_result is None:
             return self.last_result
 
@@ -871,7 +898,9 @@ class SatProblem:
 
         return self.last_result
 
-    def _optimize_num_1q_gates(self, max_num_2q_gates):
+    def _optimize_num_1q_gates(
+        self, max_num_2q_gates: int | None
+    ) -> SatProblemResult | None:
         if self.last_result is None:
             return self.last_result
 
@@ -912,7 +941,9 @@ class SatProblem:
 
         return self.last_result
 
-    def _encode_transition_relation(self, layer, start_state_vars, end_state_vars):
+    def _encode_transition_relation(
+        self, layer: SatProblemLayer, start_state_vars: Any, end_state_vars: Any
+    ) -> None:
         # For each 2-qubit CNF variable [i, j, g], encode the update state
         # constraint for qubits i, j.
         #   i.e. Y_[i, j, g] => (how end_state_vars are related to start_state_vars)
@@ -937,7 +968,7 @@ class SatProblem:
                 layer, start_state_vars, end_state_vars, i, layer.q_used_vars[i]
             )
 
-    def _encode(self):
+    def _encode(self) -> None:
         if self.encoded:
             return
 
@@ -981,14 +1012,16 @@ class SatProblem:
         self._compute_problem_vars()
         self.encoded = True
 
-    def _encode_additional_constraints(self):
+    def _encode_additional_constraints(self) -> None:
         for constraint in self.additional_constraints:
             constraint._encode(self)
 
-    def _process_solution_init_state(self, solution):
+    def _process_solution_init_state(
+        self, solution: list[bool]
+    ) -> QuantumCircuit | None:
         return None
 
-    def _num_qubits_in_gate(self, gate):
+    def _num_qubits_in_gate(self, gate: str) -> int:
         """Returns number of qubits used for this gate (supported values are 1 in 2)"""
         if gate in _GATES_1Q:
             return 1
@@ -1000,31 +1033,55 @@ class SatProblem:
     # Methods that child classes have to implement
 
     @abstractmethod
-    def _create_state_vars(self):
+    def _create_state_vars(self) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_init_constraint(self, init_state_vars):
+    def _encode_init_constraint(self, init_state_vars: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_permutation(self, start_state_vars, end_state_vars, perm_mat_vars):
+    def _encode_permutation(
+        self, start_state_vars: Any, end_state_vars: Any, perm_mat_vars: np.ndarray
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_final_constraint(self, final_state_vars):
+    def _encode_final_constraint(self, final_state_vars: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_state_vars: Any,
+        end_state_vars: Any,
+        i: int,
+        g: str,
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_2q_gate(self, layer, start_state_vars, end_state_vars, i, j, g):
+    def _encode_2q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_state_vars: Any,
+        end_state_vars: Any,
+        i: int,
+        j: int,
+        g: str,
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _encode_1q_unused(self, layer, start_state_vars, end_state_vars, i, used_var):
+    def _encode_1q_unused(
+        self,
+        layer: SatProblemLayer,
+        start_state_vars: Any,
+        end_state_vars: Any,
+        i: int,
+        used_var: int,
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -1032,5 +1089,5 @@ class SatProblem:
         raise NotImplementedError
 
     @abstractmethod
-    def _check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult) -> bool:
         raise NotImplementedError
