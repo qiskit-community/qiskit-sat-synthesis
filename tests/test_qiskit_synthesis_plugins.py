@@ -140,7 +140,7 @@ class TestSynthesizePermutationDepth:
         qc.append(PermutationGate([1, 2, 3, 4, 0]), [4, 2, 3, 0, 1])
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config)
-        assert Operator(qc) == Operator(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
     def test_transpile_with_coupling_map(self):
         """Run via transpile - with coupling map"""
@@ -149,7 +149,7 @@ class TestSynthesizePermutationDepth:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        assert Operator(qc) == Operator.from_circuit(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
 
 class TestSynthesizePermutationCount:
@@ -267,7 +267,7 @@ class TestSynthesizePermutationCount:
         qc.append(PermutationGate([1, 2, 3, 4, 0]), [4, 2, 3, 0, 1])
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config)
-        assert Operator(qc) == Operator(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
     def test_transpile_with_coupling_map(self):
         """Run via transpile - with coupling map"""
@@ -276,7 +276,7 @@ class TestSynthesizePermutationCount:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        assert Operator(qc) == Operator.from_circuit(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
 
 class TestSynthesizeLinearFunctionDepth:
@@ -412,7 +412,7 @@ class TestSynthesizeLinearFunctionDepth:
         qc.append(lf, [4, 2, 3, 0, 1])
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config)
-        assert Operator(qc) == Operator(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
     def test_transpile_with_coupling_map(self):
         """Run via transpile - with coupling map"""
@@ -422,9 +422,7 @@ class TestSynthesizeLinearFunctionDepth:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        # The line below does not work: I believe it's a problem in `transpile`.
-        # Uncomment the line when that problem is fixed.
-        # assert Operator(qc) == Operator.from_circuit(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
     def test_solver_limit(self):
         """Run via transpile - without coupling map"""
@@ -598,9 +596,7 @@ class TestSynthesizeLinearFunctionCount:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        # The line below does not work: I believe it's a problem in `transpile`.
-        # Uncomment the line when that problem is fixed.
-        # assert Operator(qc) == Operator.from_circuit(tqc)
+        assert Operator.from_circuit(qc) == Operator.from_circuit(tqc)
 
 
 class TestSynthesizeCliffordDepth:
@@ -747,9 +743,7 @@ class TestSynthesizeCliffordDepth:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        # The line below does not work: I believe it's a problem in `transpile`.
-        # Uncomment the line when that problem is fixed.
-        # assert Operator(qc).equiv(Operator.from_circuit(tqc))
+        assert Operator(qc).equiv(Operator.from_circuit(tqc))
 
 
 class TestSynthesizeCliffordCount:
@@ -886,7 +880,7 @@ class TestSynthesizeCliffordCount:
         qc.append(cliff, [2, 3, 0, 1])
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config)
-        assert Operator(qc).equiv(Operator(tqc))
+        assert Operator(qc).equiv(Operator.from_circuit(tqc))
 
     def test_transpile_with_coupling_map(self):
         """Run via transpile - with coupling map"""
@@ -896,6 +890,4 @@ class TestSynthesizeCliffordCount:
         coupling_map = CouplingMap.from_line(6)  # need same dimensions
         hls_config = self._generate_hls_config_via_class()
         tqc = transpile(qc, hls_config=hls_config, coupling_map=coupling_map)
-        # The line below does not work: I believe it's a problem in `transpile`.
-        # Uncomment the line when that problem is fixed.
-        # assert Operator(qc).equiv(Operator.from_circuit(tqc))
+        assert Operator(qc).equiv(Operator.from_circuit(tqc))
