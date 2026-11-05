@@ -14,8 +14,6 @@
 
 import numpy as np
 
-from qiskit.circuit.library.generalized_gates import LinearFunction
-
 
 def make_downward(coupling_map):
     """Orders each edge (a, b) of the coupling map so that a < b,

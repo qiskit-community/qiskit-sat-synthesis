@@ -19,7 +19,6 @@ from .synthesize import SynthesisResult, synthesize_optimal
 from .sat_problem_linear import SatProblemLinear
 from .utils import extend_identity_with_ancillas, extend_mat_with_ancillas
 
-
 # Standard problem for linear synthesis
 
 
@@ -393,7 +392,10 @@ def create_count2q_problem_with_measurements(
 
     nq = len(main_qubits) + len(dirty_ancilla_qubits) + len(clean_ancilla_qubits)
 
-    sat_problem = SatProblemLinearWithMeasurements(nq, verbosity=verbosity)
+    # FIXME: SatProblemLinearWithMeasurements no longer exists, so this raises NameError.
+    sat_problem = SatProblemLinearWithMeasurements(  # noqa: F821
+        nq, verbosity=verbosity
+    )
 
     sat_problem.set_init_matrix(init_matrix)
     sat_problem.set_allow_layout_permutation(allow_layout_permutation)

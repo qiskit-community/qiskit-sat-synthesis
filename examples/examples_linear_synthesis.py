@@ -39,7 +39,7 @@ def linear_ancillas_reduce_depth():
     for full connectivity."""
 
     print("")
-    print(f"===> Running linear_ancillas_reduce_depth")
+    print("===> Running linear_ancillas_reduce_depth")
     print("")
 
     mat = linear_mat_interesting()
