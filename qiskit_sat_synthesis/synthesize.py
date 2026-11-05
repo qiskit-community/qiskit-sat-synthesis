@@ -14,25 +14,31 @@
 Implements the bottom-up linear search strategy.
 """
 
+from __future__ import annotations
+
 import time
+from collections.abc import Callable
+
 import numpy as np
 
-from .sat_problem import SatProblemResult
+from qiskit import QuantumCircuit
+
+from .sat_problem import SatProblem, SatProblemResult
 
 
 class SynthesisResult:
-    def __init__(self):
+    def __init__(self) -> None:
 
         # all solutions
         self.solutions: list[SatProblemResult] = []
 
         # minimum depth at which a solution has been discovered
-        self.min_solution_depth = None
+        self.min_solution_depth: int | None = None
 
         # total run time
-        self.run_time = 0
+        self.run_time: float = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         num_solutions = self.num_solutions
         if num_solutions == 0:
             out = f"no solutions in {self.run_time:.2f} s"
@@ -48,7 +54,7 @@ class SynthesisResult:
         return out
 
     @property
-    def circuit(self):
+    def circuit(self) -> QuantumCircuit | None:
         """Returns circuit corresponding to the first satisfiable solution (or None if none)."""
         if len(self.solutions) > 0:
             return self.solutions[0].circuit
@@ -56,7 +62,7 @@ class SynthesisResult:
             return None
 
     @property
-    def circuit_with_permutations(self):
+    def circuit_with_permutations(self) -> QuantumCircuit | None:
         """Returns circuit with permutations corresponding to the first satisfiable solution (or None if none)."""
         if len(self.solutions) > 0:
             return self.solutions[0].circuit_with_permutations
@@ -64,23 +70,23 @@ class SynthesisResult:
             return None
 
     @property
-    def is_solved(self):
+    def is_solved(self) -> bool:
         """Returns true if at least one satisfying solution has been found."""
         return len(self.solutions) > 0
 
     @property
-    def num_solutions(self):
+    def num_solutions(self) -> int:
         """Returns the number of satisfyng solutions."""
         return len(self.solutions)
 
 
 def synthesize_optimal(
-    create_sat_problem_fn,
-    min_depth=0,
-    max_depth=np.inf,
-    max_unsolved_depths=0,
-    max_solutions=1,
-    verbosity=1,
+    create_sat_problem_fn: Callable[[int], SatProblem],
+    min_depth: int = 0,
+    max_depth: int | float = np.inf,
+    max_unsolved_depths: int = 0,
+    max_solutions: int = 1,
+    verbosity: int = 1,
 ) -> SynthesisResult:
     """Uses bottom-up linear search to synthesize optimal object."""
 

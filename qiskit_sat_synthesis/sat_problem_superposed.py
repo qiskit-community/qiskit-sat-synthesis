@@ -12,9 +12,12 @@
 
 """Synthesis of superposed states."""
 
+from __future__ import annotations
+
+import numpy as np
 from qiskit.circuit import QuantumCircuit
 from qiskit.quantum_info import StabilizerState
-from .sat_problem import SatProblem, SatProblemResult
+from .sat_problem import SatProblem, SatProblemLayer, SatProblemResult
 
 
 class SatProblemSuperposed(SatProblem):
@@ -24,18 +27,20 @@ class SatProblemSuperposed(SatProblem):
     The circuit consists of a single Hadamard gate followed by a sequence of CX-gates.
     """
 
-    def __init__(self, nq, verbosity=0):
-        self.final_state = None
-        self.root = None  # either a single qubit or a list of qubits
+    def __init__(self, nq: int, verbosity: int = 0) -> None:
+        self.final_state: list[int] | np.ndarray | None = None
+        self.root: int | list[int] | None = (
+            None  # either a single qubit or a list of qubits
+        )
         super().__init__(nq, verbosity=verbosity)
 
-    def set_root(self, root):
+    def set_root(self, root: int | list[int] | None) -> None:
         self.root = root
 
-    def set_final_matrix(self, final_state):
+    def set_final_matrix(self, final_state: list[int] | np.ndarray) -> None:
         self.final_state = final_state
 
-    def _encode_init_constraint(self, init_state_vars):
+    def _encode_init_constraint(self, init_state_vars: list[int]) -> None:
         """Encodes initial constraint."""
         self.encoder.encode_at_most_one(init_state_vars)
         self.encoder.add_clause(init_state_vars)
@@ -46,7 +51,7 @@ class SatProblemSuperposed(SatProblem):
             else:
                 self.encoder.add_clause([init_state_vars[self.root]])
 
-    def _encode_final_constraint(self, state_vars):
+    def _encode_final_constraint(self, state_vars: list[int]) -> None:
         """Encodes final constraint, i.e. the final state is the one we target."""
         if self.final_state is not None:
             for i in range(self.nq):
@@ -55,13 +60,18 @@ class SatProblemSuperposed(SatProblem):
                 else:
                     self.encoder.add_clause([-state_vars[i]])
 
-    def set_allow_layout_permutation(self, allow_layout_permutation):
+    def set_allow_layout_permutation(self, allow_layout_permutation: bool) -> None:
         if allow_layout_permutation is True:
             raise Exception(
                 "Option allow_layout_permutation is currently not supported for superposed states."
             )
 
-    def _encode_permutation(self, start_state_vars, end_state_vars, perm_mat_vars):
+    def _encode_permutation(
+        self,
+        start_state_vars: list[int],
+        end_state_vars: list[int],
+        perm_mat_vars: np.ndarray,
+    ) -> None:
         """
         Encode the constraint that the end state is obtained by applying a permutation
         to the start state.
@@ -73,19 +83,34 @@ class SatProblemSuperposed(SatProblem):
                     end_state_vars[j], start_state_vars[i], acts=[-perm_mat_vars[i, j]]
                 )
 
-    def _create_state_vars(self):
+    def _create_state_vars(self) -> list[int]:
         return [self.encoder.new_var() for _ in range(self.nq)]
 
-    def _compute_problem_vars(self):
+    def _compute_problem_vars(self) -> None:
         """Compute the list of main CNF variables that define the solution."""
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_state_vars: list[int],
+        end_state_vars: list[int],
+        i: int,
+        g: str,
+    ) -> None:
         assert False
         pass
 
-    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: list[int],
+        end_mat_vars: list[int],
+        i: int,
+        j: int,
+        g: str,
+    ) -> None:
         gate_var = layer.q2_vars[i, j, g]
         if g == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -96,7 +121,14 @@ class SatProblemSuperposed(SatProblem):
         else:
             assert False
 
-    def encode_2q_CX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_CX(
+        self,
+        start_mat_vars: list[int],
+        end_mat_vars: list[int],
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying CX(i, j))
         """
@@ -105,14 +137,28 @@ class SatProblemSuperposed(SatProblem):
             end_mat_vars[j], start_mat_vars[j], start_mat_vars[i], acts=[-gate_var]
         )
 
-    def encode_2q_SWAP(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_SWAP(
+        self,
+        start_mat_vars: list[int],
+        end_mat_vars: list[int],
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying SWAP(i, j))
         """
         self.encoder.encode_EQ(end_mat_vars[i], start_mat_vars[j], acts=[-gate_var])
         self.encoder.encode_EQ(end_mat_vars[j], start_mat_vars[i], acts=[-gate_var])
 
-    def encode_2q_DCX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_DCX(
+        self,
+        start_mat_vars: list[int],
+        end_mat_vars: list[int],
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying DCX(i, j))
         """
@@ -121,21 +167,28 @@ class SatProblemSuperposed(SatProblem):
             end_mat_vars[j], start_mat_vars[j], start_mat_vars[i], acts=[-gate_var]
         )
 
-    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: list[int],
+        end_mat_vars: list[int],
+        i: int,
+        used_var: int,
+    ) -> None:
         """Qubit i is unused."""
         self.encoder.encode_EQ(end_mat_vars[i], start_mat_vars[i], acts=[used_var])
 
     def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def _check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult) -> bool:
         checked = result.circuit_with_permutations
         expected = create_unrestricted_circuit(self.final_state)
         ok = StabilizerState(checked).equiv(StabilizerState(expected))
         assert ok
         return ok
 
-    def _process_solution_init_state(self, solution):
+    def _process_solution_init_state(self, solution: list[bool]) -> QuantumCircuit:
         qc = QuantumCircuit(self.nq)
         for i, var in enumerate(self.init_state_vars):
             if solution[var] == 1:
@@ -143,7 +196,7 @@ class SatProblemSuperposed(SatProblem):
         return qc
 
 
-def create_unrestricted_circuit(state):
+def create_unrestricted_circuit(state: list[int] | np.ndarray) -> QuantumCircuit:
     """Simple function to create qc without any connectivity constraints"""
     first = None
     qc = QuantumCircuit(len(state))

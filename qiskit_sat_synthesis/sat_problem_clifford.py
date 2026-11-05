@@ -12,9 +12,11 @@
 
 """Clifford SAT problem."""
 
+from __future__ import annotations
+
 import numpy as np
 
-from .sat_solver import SolverStatus
+from .sat_solver import SatSolverResult, SolverStatus
 
 from qiskit.quantum_info import Clifford, StabilizerState
 from qiskit.synthesis.stabilizer.stabilizer_decompose import _calc_pauli_diff_stabilizer
@@ -24,35 +26,36 @@ from qiskit.synthesis.linear import calc_inverse_matrix
 from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.library import LinearFunction
 
-from .sat_problem import SatProblem, SatProblemResult
+from .sat_problem import SatProblem, SatProblemLayer, SatProblemResult
 
 
 class SatProblemClifford(SatProblem):
-    def __init__(self, nq, verbosity=0):
+    def __init__(self, nq: int, verbosity: int = 0) -> None:
         self.state_preparation_mode = False
-        self.final_clifford = None
+        self.final_clifford: Clifford | None = None
         self.allow_final_linear = False
-        self.final_permutation_vars = None
+        self.final_permutation_vars: np.ndarray | None = None
+        self.final_linear_vars: np.ndarray | None = None
         super().__init__(nq, verbosity=verbosity)
 
-    def set_init_matrix(self, matrix):
+    def set_init_matrix(self, matrix: np.ndarray) -> None:
         self.init_state = matrix
 
-    def set_init_matrix_to_identity(self, nq):
+    def set_init_matrix_to_identity(self, nq: int) -> None:
         self.init_state = np.eye(2 * nq)
 
-    def set_final_clifford(self, clifford):
+    def set_final_clifford(self, clifford: Clifford) -> None:
         self.final_clifford = clifford
 
-    def set_state_preparation_mode(self, state_preparation_mode):
+    def set_state_preparation_mode(self, state_preparation_mode: bool) -> None:
         self.state_preparation_mode = state_preparation_mode
 
-    def set_allow_final_linear(self, allow_final_linear):
+    def set_allow_final_linear(self, allow_final_linear: bool) -> None:
         self.allow_final_linear = allow_final_linear
 
     # Private methods, should not be used by the calling application
 
-    def _encode_init_constraint(self, init_matrix_vars):
+    def _encode_init_constraint(self, init_matrix_vars: np.ndarray) -> None:
         """Encode constraints on the initial matrix."""
         n = 2 * self.nq
 
@@ -66,7 +69,7 @@ class SatProblemClifford(SatProblem):
                     )
                     self.encoder.add_clause([lit])
 
-    def _encode_final_constraint(self, matrix_vars):
+    def _encode_final_constraint(self, matrix_vars: np.ndarray) -> None:
         """Encode the constraint that the final matrix should satisfy.
         If state_preparation_mode is False, the final matrix should be equal to self.final_matrix.
         If state_preparation_mode is True, the final matrix should prepare the same state as self.final_matrix.
@@ -77,7 +80,7 @@ class SatProblemClifford(SatProblem):
             else:
                 self._encode_final_state_constraint(matrix_vars)
 
-    def _encode_final_matrix_constraint(self, matrix_vars):
+    def _encode_final_matrix_constraint(self, matrix_vars: np.ndarray) -> None:
         """Encode the constraint that matrix_vars are equal to self.final_matrix."""
         symplectic_matrix = self.final_clifford.symplectic_matrix
         for i in range(2 * self.nq):
@@ -89,7 +92,7 @@ class SatProblemClifford(SatProblem):
                 )
                 self.encoder.add_clause([lit])
 
-    def _encode_final_state_constraint(self, matrix_vars):
+    def _encode_final_state_constraint(self, matrix_vars: np.ndarray) -> None:
         """
         Encode the constraint that matrix_vars prepare the same state as self.final_matrix.
         Here we use the fact that two symplectic matrices M1 and M2 prepare the same state iff the stabilizer rows
@@ -107,7 +110,12 @@ class SatProblemClifford(SatProblem):
                         xor_clause.append(matrix_vars[i, r])
                 self.encoder.encode_general_xor(xor_clause)
 
-    def _encode_permutation(self, start_mat_vars, end_mat_vars, perm_mat_vars):
+    def _encode_permutation(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        perm_mat_vars: np.ndarray,
+    ) -> None:
         """
         Encode the constraint that the end matrix is obtained by applying a permutation
         to the start matrix. Here, start_mat_vars and end_mat_vars are 2n x 2n, and
@@ -128,7 +136,9 @@ class SatProblemClifford(SatProblem):
                         acts=[-perm_mat_vars[i, j]],
                     )
 
-    def _encode_linear_function(self, start_mat_vars, end_mat_vars, m):
+    def _encode_linear_function(
+        self, start_mat_vars: np.ndarray, end_mat_vars: np.ndarray, m: np.ndarray
+    ) -> None:
         """
         Encode the constraint that the end (Clifford) matrix if obtained from the start
         (Clifford) matrix by applying a Clifford corresponding to linear function (mat).
@@ -158,13 +168,20 @@ class SatProblemClifford(SatProblem):
             nq, start_mat_vars[nq:, nq:], m_inv, end_mat_vars[nq:, nq:]
         )
 
-    def _create_state_vars(self):
+    def _create_state_vars(self) -> np.ndarray:
         """Creates variables representing the current state
         (for Cliffords these are entries of the 2nq x 2nq symplectic matrix).
         """
         return self.encoder.create_mat_with_new_vars(2 * self.nq)
 
-    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        used_var: int,
+    ) -> None:
         """Qubit i is unused."""
         nq = self.nq
         for s in range(2 * nq):
@@ -175,7 +192,14 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, x_old, acts=[used_var])
             self.encoder.encode_EQ(z_new, z_old, acts=[used_var])
 
-    def _encode_1q_gate(self, layer, start_mat_vars, end_mat_vars, i, g):
+    def _encode_1q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        g: str,
+    ) -> None:
         gate_var = layer.q1_vars[i, g]
         if g == "I":
             self.encode_1q_I(start_mat_vars, end_mat_vars, i, gate_var)
@@ -193,7 +217,13 @@ class SatProblemClifford(SatProblem):
         else:
             assert False
 
-    def encode_1q_I(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_I(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         """Applying the identity gate on qubit i
         (same as not using qubit i at all).
         """
@@ -207,7 +237,13 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, x_old, acts=[-gate_var])
             self.encoder.encode_EQ(z_new, z_old, acts=[-gate_var])
 
-    def encode_1q_H(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_H(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         # If the Hadamard gate is applied, columns are swapped
         nq = self.nq
         for s in range(2 * nq):
@@ -218,7 +254,13 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, z_old, acts=[-gate_var])
             self.encoder.encode_EQ(z_new, x_old, acts=[-gate_var])
 
-    def encode_1q_S(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_S(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         # applying phase gate: x_new = x_old, z_new = x_old XOR z_old
         nq = self.nq
         for s in range(2 * nq):
@@ -229,7 +271,13 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, x_old, acts=[-gate_var])
             self.encoder.encode_XOR(z_new, x_old, z_old, acts=[-gate_var])
 
-    def encode_1q_SH(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_SH(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         #   new col i = old col i XOR old col i+NQ
         #   new col i+NQ = old col i
         nq = self.nq
@@ -241,7 +289,13 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_XOR(x_new, x_old, z_old, acts=[-gate_var])
             self.encoder.encode_EQ(z_new, x_old, acts=[-gate_var])
 
-    def encode_1q_HS(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_HS(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         # means: first h, then s
         #   new col i = old_col i + NQ
         #   new col i + NQ = old_col i XOR old_col i+NQ
@@ -254,7 +308,13 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_EQ(x_new, z_old, acts=[-gate_var])
             self.encoder.encode_XOR(z_new, x_old, z_old, acts=[-gate_var])
 
-    def encode_1q_SHS(self, start_mat_vars, end_mat_vars, i, gate_var):
+    def encode_1q_SHS(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        gate_var: int,
+    ) -> None:
         nq = self.nq
         for s in range(2 * nq):
             x_old = start_mat_vars[s, i]
@@ -264,7 +324,15 @@ class SatProblemClifford(SatProblem):
             self.encoder.encode_XOR(x_new, x_old, z_old, acts=[-gate_var])
             self.encoder.encode_EQ(z_new, z_old, acts=[-gate_var])
 
-    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        g: str,
+    ) -> None:
         gate_var = layer.q2_vars[i, j, g]
         if g == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, gate_var)
@@ -277,7 +345,14 @@ class SatProblemClifford(SatProblem):
         else:
             assert False
 
-    def encode_2q_CX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_CX(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying CX(i, j))
         """
@@ -306,7 +381,14 @@ class SatProblemClifford(SatProblem):
                 end_mat_vars[s, i], start_mat_vars[s, i], acts=[-gate_var]
             )
 
-    def encode_2q_CZ(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_CZ(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying CZ(i, j))
         """
@@ -335,7 +417,14 @@ class SatProblemClifford(SatProblem):
                 end_mat_vars[s, j], start_mat_vars[s, j], acts=[-gate_var]
             )
 
-    def encode_2q_DCX(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_DCX(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying DCX(i, j))
         """
@@ -365,7 +454,14 @@ class SatProblemClifford(SatProblem):
                 end_mat_vars[s, j + nq], start_mat_vars[s, i + nq], acts=[-gate_var]
             )
 
-    def encode_2q_SWAP(self, start_mat_vars, end_mat_vars, i, j, gate_var):
+    def encode_2q_SWAP(
+        self,
+        start_mat_vars: np.ndarray,
+        end_mat_vars: np.ndarray,
+        i: int,
+        j: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying SWAP(i, j))
         """
@@ -457,7 +553,7 @@ class SatProblemClifford(SatProblem):
 
         return synthesis_result
 
-    def _check_returned_result(self, synthesis_result: SatProblemResult):
+    def _check_returned_result(self, synthesis_result: SatProblemResult) -> bool:
         """
         Check whether the obtained solution implements target_clifford
         """
@@ -479,7 +575,7 @@ class SatProblemClifford(SatProblem):
 
         return ok
 
-    def _encode(self):
+    def _encode(self) -> None:
         """Temporarily overwriting encode here, otherwise cannot add some constraints."""
         if self.encoded:
             return
@@ -531,7 +627,9 @@ class SatProblemClifford(SatProblem):
         self._compute_problem_vars()
         self.encoded = True
 
-    def _extract_sat_problem_result(self, sat_query_result) -> SatProblemResult:
+    def _extract_sat_problem_result(
+        self, sat_query_result: SatSolverResult
+    ) -> SatProblemResult:
         """Extract solution (quantum circuit and layouts) from SAT-solver assignment."""
         solver_result = sat_query_result.result
         solver_solution = sat_query_result.solution

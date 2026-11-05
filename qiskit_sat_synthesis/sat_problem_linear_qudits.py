@@ -12,9 +12,15 @@
 
 """Linear SAT problem with qudits instead of qubits."""
 
+from __future__ import annotations
+
 import numpy as np
-from qiskit_sat_synthesis.sat_problem import SatProblem, SatProblemResult
-from qiskit_sat_synthesis.sat_solver import SolverStatus
+from qiskit_sat_synthesis.sat_problem import (
+    SatProblem,
+    SatProblemLayer,
+    SatProblemResult,
+)
+from qiskit_sat_synthesis.sat_solver import SatSolverResult, SolverStatus
 
 # CNF generation notes (old version):
 #
@@ -82,8 +88,8 @@ from qiskit_sat_synthesis.sat_solver import SolverStatus
 
 
 class SatProblemLinearQudits(SatProblem):
-    def __init__(self, nq, qd, verbosity=0):
-        self.final_matrix = None
+    def __init__(self, nq: int, qd: int, verbosity: int = 0) -> None:
+        self.final_matrix: np.ndarray | None = None
         self.qd = qd
         super().__init__(nq, verbosity=verbosity)
 
@@ -93,13 +99,13 @@ class SatProblemLinearQudits(SatProblem):
     # def set_init_matrix_to_identity(self, nq):
     #     self.init_state = np.eye(nq)
 
-    def set_final_matrix(self, matrix):
+    def set_final_matrix(self, matrix: np.ndarray) -> None:
         self.final_matrix = matrix
 
-    def _create_state_vars(self):
+    def _create_state_vars(self) -> dict[tuple[int, int, int], int]:
         """Create M[i, j, d] vars."""
 
-        M = {}
+        M: dict[tuple[int, int, int], int] = {}
         for i in range(self.nq):
             for j in range(self.nq):
                 for d in range(self.qd):
@@ -112,7 +118,9 @@ class SatProblemLinearQudits(SatProblem):
 
         return M
 
-    def _encode_init_constraint(self, init_matrix_vars):
+    def _encode_init_constraint(
+        self, init_matrix_vars: dict[tuple[int, int, int], int]
+    ) -> None:
         """Encode constraints on the initial matrix."""
         for i in range(self.nq):
             for j in range(self.nq):
@@ -121,7 +129,9 @@ class SatProblemLinearQudits(SatProblem):
                 else:
                     self.encoder.add_clause([init_matrix_vars[i, j, 0]])
 
-    def _encode_final_constraint(self, matrix_vars):
+    def _encode_final_constraint(
+        self, matrix_vars: dict[tuple[int, int, int], int]
+    ) -> None:
         """Encodes final constraints on M, based on the self.tgt matrix."""
         for i in range(self.nq):
             for j in range(self.nq):
@@ -129,30 +139,58 @@ class SatProblemLinearQudits(SatProblem):
                     if self.final_matrix[i, j] == d:
                         self.encoder.add_clause([matrix_vars[i, j, d]])
 
-    def _encode_permutation(self, start_mat_vars, end_mat_vars, perm_mat_vars):
+    def _encode_permutation(
+        self,
+        start_mat_vars: dict[tuple[int, int, int], int],
+        end_mat_vars: dict[tuple[int, int, int], int],
+        perm_mat_vars: np.ndarray,
+    ) -> None:
         """
         Encode the constraint that the end matrix is obtained by applying a permutation
         to the start matrix.
         """
         raise Exception("Permutations are currently not allowed with qudits")
 
-    def _compute_problem_vars(self):
+    def _compute_problem_vars(self) -> None:
         """Compute the list of main CNF variables that define the solution."""
         for layer in self.layers:
             self.problem_vars.extend(layer.q2_vars.values())
 
-    def _encode_1q_gate(self, layer, start_state_vars, end_state_vars, i, g):
+    def _encode_1q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_state_vars: dict[tuple[int, int, int], int],
+        end_state_vars: dict[tuple[int, int, int], int],
+        i: int,
+        g: tuple[str, int],
+    ) -> None:
         assert False
         pass
 
-    def _encode_2q_gate(self, layer, start_mat_vars, end_mat_vars, i, j, g):
+    def _encode_2q_gate(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: dict[tuple[int, int, int], int],
+        end_mat_vars: dict[tuple[int, int, int], int],
+        i: int,
+        j: int,
+        g: tuple[str, int],
+    ) -> None:
         gate_var = layer.q2_vars[i, j, g]
         if g[0] == "CX":
             self.encode_2q_CX(start_mat_vars, end_mat_vars, i, j, g[1], gate_var)
         else:
             assert False
 
-    def encode_2q_CX(self, start_mat_vars, end_mat_vars, i, j, c, gate_var):
+    def encode_2q_CX(
+        self,
+        start_mat_vars: dict[tuple[int, int, int], int],
+        end_mat_vars: dict[tuple[int, int, int], int],
+        i: int,
+        j: int,
+        c: int,
+        gate_var: int,
+    ) -> None:
         """
         Encode act_lit -> (end_mat is obtained from start_mat by applying CX(i, j))
         """
@@ -176,7 +214,14 @@ class SatProblemLinearQudits(SatProblem):
                     start_mat_vars[i, s, p], end_mat_vars[i, s, p], acts=[-gate_var]
                 )
 
-    def _encode_1q_unused(self, layer, start_mat_vars, end_mat_vars, i, used_var):
+    def _encode_1q_unused(
+        self,
+        layer: SatProblemLayer,
+        start_mat_vars: dict[tuple[int, int, int], int],
+        end_mat_vars: dict[tuple[int, int, int], int],
+        i: int,
+        used_var: int,
+    ) -> None:
         """Qubit i is unused."""
         nq = self.nq
         for s in range(nq):
@@ -188,19 +233,21 @@ class SatProblemLinearQudits(SatProblem):
     def _fix_returned_result(self, result: SatProblemResult) -> SatProblemResult:
         return result
 
-    def _check_returned_result(self, result: SatProblemResult):
+    def _check_returned_result(self, result: SatProblemResult) -> bool:
         ok = True
         return ok
 
-    def _num_qubits_in_gate(self, gate):
+    def _num_qubits_in_gate(self, gate: tuple[str, int]) -> int:
         """Returns number of qubits used for this gate (supported values are 1 in 2)"""
         if isinstance(gate, tuple) and gate[0] == "CX":
             return 2
         else:
             raise Exception(f"Gate {gate} is not in the lists of known gates.")
 
-    def _extract_sat_problem_result(self, sat_query_result) -> SatProblemResult:
-        def print_mvars(matrix_vars):
+    def _extract_sat_problem_result(
+        self, sat_query_result: SatSolverResult
+    ) -> SatProblemResult:
+        def print_mvars(matrix_vars: dict[tuple[int, int, int], int]) -> None:
             mat = np.zeros((self.nq, self.nq))
             for i in range(self.nq):
                 for j in range(self.nq):
@@ -210,7 +257,7 @@ class SatProblemLinearQudits(SatProblem):
                             break
             print(mat.astype(int))
 
-        def print_gate_vars(layer):
+        def print_gate_vars(layer: SatProblemLayer) -> None:
             # 2-qubit gates
             for i in range(self.nq):
                 for j in range(self.nq):

@@ -12,16 +12,22 @@
 
 """Additional constraints restricting one or several problem layers."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 
 from itertools import combinations
+from typing import TYPE_CHECKING
 
 from .sat_encoder import UnaryCounter
+
+if TYPE_CHECKING:
+    from .sat_problem import SatProblem
 
 
 class SatProblemConstraint:
     @abstractmethod
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         raise NotImplementedError
 
 
@@ -36,11 +42,11 @@ class Sat1QOnlyAfter2QConstraint(SatProblemConstraint):
     compiler.
     """
 
-    def __init__(self, layer2q_id, layer1q_id):
+    def __init__(self, layer2q_id: int, layer1q_id: int) -> None:
         self.layer2q_id = layer2q_id
         self.layer1q_id = layer1q_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer2q = sat_problem.layers[self.layer2q_id]
         layer1q = sat_problem.layers[self.layer1q_id]
         for i in range(sat_problem.nq):
@@ -57,10 +63,10 @@ class SatLayerNonEmptyConstraint(SatProblemConstraint):
     linear functions depth and count synthesis.
     """
 
-    def __init__(self, layer_id):
+    def __init__(self, layer_id: int) -> None:
         self.layer_id = layer_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer = sat_problem.layers[self.layer_id]
         used_vars = list(layer.q_used_vars.values())
         sat_problem.encoder.add_clause(used_vars)
@@ -72,11 +78,11 @@ class SatMaxUnique2QLayersConstraint(SatProblemConstraint):
     given 2-qubit layers.
     """
 
-    def __init__(self, layer_ids, max_unique):
+    def __init__(self, layer_ids: list[int], max_unique: int) -> None:
         self.layer_ids = layer_ids
         self.max_unique = max_unique
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         num_layers = len(self.layer_ids)
         if num_layers <= self.max_unique:
             return
@@ -145,11 +151,11 @@ class SatCannotPush2QEarlierConstraint(SatProblemConstraint):
     combined with earlier 1-qubit gates.
     """
 
-    def __init__(self, layer1_id, layer2_id):
+    def __init__(self, layer1_id: int, layer2_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1_id = self.layer1_id
         layer2_id = self.layer2_id
 
@@ -190,11 +196,11 @@ class SatLayersIntersectOrOrderedConstraint(SatProblemConstraint):
 
     """
 
-    def __init__(self, layer1_id, layer2_id):
+    def __init__(self, layer1_id: int, layer2_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1 = sat_problem.layers[self.layer1_id]
         layer2 = sat_problem.layers[self.layer2_id]
         layers_intersect_lit = sat_problem.encoder.encode_both_on_together(
@@ -217,11 +223,11 @@ class SatCannotSimplify2Q2QConstraint(SatProblemConstraint):
     synthesis.
     """
 
-    def __init__(self, layer1_id, layer2_id):
+    def __init__(self, layer1_id: int, layer2_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         """
         Do not allow CX(i, j) CX(i, j).
         More identities (including DCX and SWAP) to be added later.
@@ -257,12 +263,12 @@ class SatCannotSimplify2Q1Q2QConstraint(SatProblemConstraint):
     can probably not be used in all other cases.
     """
 
-    def __init__(self, layer1_id, layer2_id, layer3_id):
+    def __init__(self, layer1_id: int, layer2_id: int, layer3_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
         self.layer3_id = layer3_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1 = sat_problem.layers[self.layer1_id]
         layer2 = sat_problem.layers[self.layer2_id]
         layer3 = sat_problem.layers[self.layer3_id]
@@ -299,11 +305,11 @@ class SatCommutation2Q2QConstraint(SatProblemConstraint):
     Can be used for linear functions count and depth.
     """
 
-    def __init__(self, layer1_id, layer2_id):
+    def __init__(self, layer1_id: int, layer2_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1 = sat_problem.layers[self.layer1_id]
         layer2 = sat_problem.layers[self.layer2_id]
 
@@ -362,12 +368,12 @@ class SatCommutation2Q1Q2QForCountOnlyConstraint(SatProblemConstraint):
     """Generalization of the previous constraints to Clifford's case.
     Currently, can only be used for Clifford count"""
 
-    def __init__(self, layer1_id, layer2_id, layer3_id):
+    def __init__(self, layer1_id: int, layer2_id: int, layer3_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
         self.layer3_id = layer3_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1 = sat_problem.layers[self.layer1_id]
         layer2 = sat_problem.layers[self.layer2_id]
         layer3 = sat_problem.layers[self.layer3_id]
@@ -420,12 +426,12 @@ class SatCommutation2Q1Q2QForCountOnlyConstraint(SatProblemConstraint):
 class SatCommutation2Q1Q2QConstraint(SatProblemConstraint):
     """Generalization of the previous constraints to Clifford's case."""
 
-    def __init__(self, layer1_id, layer2_id, layer3_id):
+    def __init__(self, layer1_id: int, layer2_id: int, layer3_id: int) -> None:
         self.layer1_id = layer1_id
         self.layer2_id = layer2_id
         self.layer3_id = layer3_id
 
-    def _encode(self, sat_problem):
+    def _encode(self, sat_problem: SatProblem) -> None:
         layer1 = sat_problem.layers[self.layer1_id]
         layer2 = sat_problem.layers[self.layer2_id]
         layer3 = sat_problem.layers[self.layer3_id]
@@ -495,11 +501,11 @@ class SatNonOverlapping2qConstraint(SatProblemConstraint):
     {c, a, b, d}, {a, c, b, d}, {c, a, d, b}.
     """
 
-    def __init__(self, layer_id):
+    def __init__(self, layer_id: int) -> None:
         self.layer_id = layer_id
 
-    def _encode(self, sat_problem):
-        def block(a, b, c, d):
+    def _encode(self, sat_problem: SatProblem) -> None:
+        def block(a: int, b: int, c: int, d: int) -> None:
             if (used_ab := layer._get_connection_var(a, b)) is None:
                 return
             if (used_cd := layer._get_connection_var(c, d)) is None:

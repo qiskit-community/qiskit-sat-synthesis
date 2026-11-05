@@ -40,11 +40,14 @@ The synthesized circuit is supposed to adhere to connectivity constraints when b
 `coupling_map` and `qubits` are specified.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 from qiskit.circuit.library.generalized_gates import PermutationGate, LinearFunction
 from qiskit.quantum_info import Clifford
-from qiskit.transpiler import CouplingMap
+from qiskit.circuit import Operation, QuantumCircuit
+from qiskit.transpiler import CouplingMap, Target
 
 from qiskit.transpiler.passes.synthesis.hls_plugins import (
     HighLevelSynthesisPlugin,
@@ -99,8 +102,13 @@ class SatSynthesisPermutationDepth(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `PermutationGate`."""
 
         verbosity = options.get("verbosity", 0)
@@ -184,8 +192,13 @@ class SatSynthesisPermutationCount(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `PermutationGate`."""
 
         verbosity = options.get("verbosity", 0)
@@ -267,8 +280,13 @@ class SatSynthesisLinearFunctionDepth(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `LinearFunction`."""
         verbosity = options.get("verbosity", 0)
         min_depth2q = options.get("min_depth", 0)
@@ -351,8 +369,13 @@ class SatSynthesisLinearFunctionCount(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `LinearFunction`."""
 
         verbosity = options.get("verbosity", 0)
@@ -438,8 +461,13 @@ class SatSynthesisCliffordDepth(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `Clifford`."""
         verbosity = options.get("verbosity", 0)
         state_preparation_mode = options.get("state_preparation_mode", False)
@@ -538,8 +566,13 @@ class SatSynthesisCliffordCount(HighLevelSynthesisPlugin):
     """
 
     def run(
-        self, high_level_object, coupling_map=None, target=None, qubits=None, **options
-    ):
+        self,
+        high_level_object: Operation,
+        coupling_map: CouplingMap | None = None,
+        target: Target | None = None,
+        qubits: list[int] | None = None,
+        **options,
+    ) -> QuantumCircuit | None:
         """Run synthesis for the given `Clifford`."""
 
         verbosity = options.get("verbosity", 0)

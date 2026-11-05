@@ -43,5 +43,5 @@ setup(
             "clifford.sat_count = qiskit_sat_synthesis.qiskit_synthesis_plugins:SatSynthesisCliffordCount",
         ]
     },
-    python_requires=">=3.7",
+    python_requires=">=3.10",
 )
