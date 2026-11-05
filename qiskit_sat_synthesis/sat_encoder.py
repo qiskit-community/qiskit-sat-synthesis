@@ -416,7 +416,6 @@ class SatEncoder:
         """Returns linear matrix from solution."""
         nq = len(mat)
         linear_fn = np.empty((nq, nq))
-        perm_pattern = []
         for i in range(nq):
             for j in range(nq):
                 lit = mat[i, j]

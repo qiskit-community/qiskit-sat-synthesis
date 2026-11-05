@@ -21,7 +21,6 @@ from qiskit.circuit.library import LinearFunction
 
 from qiskit_sat_synthesis.synthesize_clifford import (
     synthesize_clifford_depth,
-    synthesize_clifford_count,
 )
 
 
@@ -45,7 +44,6 @@ def cz_up_to_linear():
     coupling_map = list(CouplingMap.from_full(nq).get_edges())
     print(coupling_map)
 
-    allow_final_permutation = True
     for allow_final_linear in [False, True]:
         print("\n\n")
         print(f"Running with {allow_final_linear = }")

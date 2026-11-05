@@ -38,7 +38,6 @@ from .sat_problem_constraints import (
     SatCannotSimplify2Q1Q2QConstraint,
 )
 
-
 # LIST OF KNOWN 1Q-GATES:
 _GATES_1Q = ["I", "S", "H", "SH", "HS", "SHS", "SQRTX", "MEASUREMENT"]
 
@@ -636,14 +635,14 @@ class SatProblem:
             result = self._fix_returned_result(result)
             if self.check_solutions:
                 if self.verbosity >= 1:
-                    print(f"Checking solution")
+                    print("Checking solution")
 
                 ok = self._check_returned_result(result)
                 if self.verbosity >= 1:
                     print(f" => solution is correct: {ok}")
 
             if self.print_solutions:
-                print(f"Printing solution")
+                print("Printing solution")
                 print(result.circuit)
         return result
 
@@ -664,12 +663,12 @@ class SatProblem:
             result = self._fix_returned_result(result)
             if self.check_solutions:
                 if self.verbosity >= 1:
-                    print(f"Checking solution")
+                    print("Checking solution")
                 ok = self._check_returned_result(result)
                 if self.verbosity >= 1:
                     print(f" => solution is correct: {ok}")
             if self.print_solutions:
-                print(f"Printing solution")
+                print("Printing solution")
                 print(result.circuit)
         return result
 

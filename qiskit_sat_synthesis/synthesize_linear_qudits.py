@@ -16,7 +16,6 @@ Synthesis of linear circuits with qudits.
 As Qiskit does not support such circuits, the output is simply printed to the screen.
 """
 
-
 import numpy as np
 from functools import partial
 

@@ -1,0 +1,13 @@
+[tool.ruff]
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = [
+    "E501",  # line-too-long: rely on black for formatting
+    "E741",  # ambiguous-variable-name: `l` is the natural name for a SAT literal
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # allow re-exports in init files
+"tests/*" = ["F841"]  # transpile results are kept for currently-disabled asserts

@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from .sat_solver import SatSolver, SolverStatus
+from .sat_solver import SolverStatus
 
 from qiskit.quantum_info import Clifford, StabilizerState
 from qiskit.synthesis.stabilizer.stabilizer_decompose import _calc_pauli_diff_stabilizer
@@ -23,7 +23,6 @@ from qiskit.synthesis.permutation import _inverse_pattern
 from qiskit.synthesis.linear import calc_inverse_matrix
 from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.library import LinearFunction
-from .utils import _get_ordered_swap
 
 from .sat_problem import SatProblem, SatProblemResult
 
