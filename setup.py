@@ -22,7 +22,7 @@ with open("README.md") as f:
 
 setup(
     name="qiskit-sat-synthesis",
-    version="0.0.2",
+    version="0.0.3",
     description="Sat-based synthesis plugins for Qiskit",
     long_description=README,
     long_description_content_type="text/markdown",
