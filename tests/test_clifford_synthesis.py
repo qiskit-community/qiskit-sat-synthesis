@@ -12,6 +12,8 @@
 
 """Tests for Clifford synthesis."""
 
+import pytest
+
 from qiskit.circuit import QuantumCircuit
 from qiskit.quantum_info import Clifford
 from qiskit.transpiler import CouplingMap
@@ -74,3 +76,40 @@ def test_clifford_synthesis_lnn_count():
         verbosity=0,
     )
     assert Clifford(result.circuit) == cliff
+
+
+@pytest.mark.parametrize(
+    "synthesis_fn", [synthesize_clifford_depth, synthesize_clifford_count]
+)
+@pytest.mark.parametrize(
+    "allow_layout_permutation, allow_final_permutation",
+    [(False, True), (True, False), (True, True)],
+)
+def test_clifford_synthesis_lnn_with_permutations(
+    synthesis_fn, allow_layout_permutation, allow_final_permutation
+):
+    """
+    With layout and/or final permutations, circuit_with_permutations (which includes
+    the permutations explicitly) must implement the target Clifford.
+    """
+
+    qc = QuantumCircuit(4)
+    qc.x(0)
+    qc.s(1)
+    qc.cx(0, 1)
+    qc.h(0)
+    qc.cx(0, 2)
+    qc.cx(1, 3)
+
+    cliff = Clifford(qc)
+
+    coupling_map = list(CouplingMap.from_line(4).get_edges())
+    result = synthesis_fn(
+        target_clifford=cliff,
+        coupling_map=coupling_map,
+        allow_final_permutation=allow_final_permutation,
+        allow_layout_permutation=allow_layout_permutation,
+        verbosity=0,
+    )
+    assert result.is_solved
+    assert Clifford(result.circuit_with_permutations) == cliff

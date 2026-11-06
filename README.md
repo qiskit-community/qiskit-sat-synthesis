@@ -1,7 +1,7 @@
 # Qiskit SAT Synthesis
 
 This repository contains a collection of SAT-based synthesis methods for various ``Qiskit`` objects,
-including objects of type``Clifford``, ``LinearFunction`` and ``PermutationGate``.
+including objects of type ``Clifford``, ``LinearFunction`` and ``PermutationGate``.
 
 ## Approach
 
@@ -67,7 +67,7 @@ print(qct)
 
 ## More information
 
-Plesse check out the python notebook `notebooks/using-qiskit-sat-synthesis.ipunb` and various examples 
+Please check out the python notebook `notebooks/using-qiskit-sat-synthesis.ipynb` and various examples 
 in the `examples` directory.
 
 ## Limitations
