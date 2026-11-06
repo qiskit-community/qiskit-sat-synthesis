@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 from functools import partial
 
@@ -399,6 +401,8 @@ def create_count2q_problem_with_measurements(
     nq = len(main_qubits) + len(dirty_ancilla_qubits) + len(clean_ancilla_qubits)
 
     # FIXME: SatProblemLinearWithMeasurements no longer exists, so this raises NameError.
+    # This function is currently unreachable: synthesize_linear_count returns early
+    # when allow_measurements=True. Kept for a future reimplementation.
     sat_problem = SatProblemLinearWithMeasurements(  # noqa: F821
         nq, verbosity=verbosity
     )
@@ -574,6 +578,14 @@ def synthesize_linear_count(
         print(
             f"Running linear synthesis with options: optimize count2q, {allow_layout_permutation = }, {allow_final_permutation = }"
         )
+
+    if allow_measurements:
+        warnings.warn(
+            "Option allow_measurements is currently not supported for count-optimal "
+            "linear synthesis; returning no solutions.",
+            stacklevel=2,
+        )
+        return SynthesisResult()
 
     if not allow_measurements:
         sat_problem_fn = partial(

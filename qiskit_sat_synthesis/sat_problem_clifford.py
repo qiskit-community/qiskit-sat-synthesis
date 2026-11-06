@@ -544,10 +544,10 @@ class SatProblemClifford(SatProblem):
         synthesis_result.circuit.compose(
             pauli_circ, qubits=permuted_qubits, inplace=True
         )
+        # checked_qc already includes the permutations, so the Pauli layer computed
+        # for it is appended without remapping.
         synthesis_result.circuit_with_permutations = checked_qc
-        synthesis_result.circuit_with_permutations.compose(
-            pauli_circ, qubits=permuted_qubits, inplace=True
-        )
+        synthesis_result.circuit_with_permutations.compose(pauli_circ, inplace=True)
         if lf is not None:
             synthesis_result.circuit_with_permutations.append(lf, range(nq))
 

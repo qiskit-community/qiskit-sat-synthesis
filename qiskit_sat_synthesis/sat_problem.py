@@ -836,8 +836,7 @@ class SatProblem:
             for swap_pair in swap_list:
                 checked_qc.swap(swap_pair[0], swap_pair[1])
 
-        for inst, qargs, cargs in qc.data:
-            checked_qc.append(inst, qargs, cargs)
+        checked_qc.compose(qc, inplace=True)
 
         # add inverse of initial permutation
         if layout_permutation:
